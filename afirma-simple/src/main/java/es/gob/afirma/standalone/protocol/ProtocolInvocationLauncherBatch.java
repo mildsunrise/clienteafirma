@@ -98,19 +98,27 @@ final class ProtocolInvocationLauncherBatch {
 		// Si hay marcado un almacen como el ultimo seleccionado, lo usamos (este es el caso en el que se llaman
 		// varias operaciones de firma dentro de la misma invocacion a la aplicacion)
 		AOKeyStore aoks = null;
+		String keyStoreLib = null;
 		if (lastSelectedKeyStore != null && !lastSelectedKeyStore.isEmpty()) {
 			aoks = SimpleKeyStoreManager.getLastSelectedKeystore();
+			if (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks)) {
+				keyStoreLib = SimpleKeyStoreManager.getLastSelectedKeystoreLib();
+			}
 		}
 		// Si no, si el usuario definio un almacen por defecto para usarlo en las llamadas a la aplicacion, lo usamos
 		else if (useDefaultStore) {
 			final String defaultStore = PreferencesManager.get(PreferencesManager.PREFERENCE_KEYSTORE_DEFAULT_STORE);
 			if (!PreferencesManager.VALUE_KEYSTORE_DEFAULT.equals(defaultStore)) {
 				aoks = SimpleKeyStoreManager.getKeyStore(defaultStore, true);
+				if (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks)) {
+					keyStoreLib = PreferencesManager.get(PreferencesManager.PREFERENCE_LOCAL_KEYSTORE_PATH);
+				}
 			}
 		}
 		// Si no, si en la llamada se definio el almacen que se debia usar, lo usamos
 		else {
 			aoks = SimpleKeyStoreManager.getKeyStore(options.getDefaultKeyStore(), true);
+			keyStoreLib = options.getDefaultKeyStoreLib();
 		}
 
 		// Si aun no se ha definido el almacen, se usara el por defecto para el sistema operativo
@@ -122,13 +130,9 @@ final class ProtocolInvocationLauncherBatch {
 
 		SignOperationResult operationResult;
 		try {
-			operationResult = sign(options, aoks, useDefaultStore, filterManager, protocolVersion);
+			operationResult = sign(options, aoks, keyStoreLib, useDefaultStore, filterManager, protocolVersion);
 		}
-		catch (final AOCancelledOperationException e) {
-			ProgressInfoDialogManager.hideProgressDialog();
-			throw e;
-		}
-		catch (final SocketOperationException e) {
+		catch (final AOCancelledOperationException | SocketOperationException e) {
 			ProgressInfoDialogManager.hideProgressDialog();
 			throw e;
 		}
@@ -225,8 +229,9 @@ final class ProtocolInvocationLauncherBatch {
 		return result.toString();
 	}
 
-	private static SignOperationResult sign(final UrlParametersForBatch options, final AOKeyStore aoks, final boolean useDefaultStore,
-			final CertFilterManager filterManager, final ProtocolVersion protocolVersion)
+	private static SignOperationResult sign(final UrlParametersForBatch options, final AOKeyStore ks, final String ksLib,
+											final boolean useDefaultStore, final CertFilterManager filterManager,
+											final ProtocolVersion protocolVersion)
 			throws AOCancelledOperationException, SocketOperationException {
 
 		final PrivateKeyEntry pke;
@@ -237,16 +242,9 @@ final class ProtocolInvocationLauncherBatch {
 
 		} else {
 
-			final String aoksLib;
-			if (useDefaultStore && (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks))) {
-				aoksLib = PreferencesManager.get(PreferencesManager.PREFERENCE_LOCAL_KEYSTORE_PATH);
-			} else {
-				aoksLib = options.getDefaultKeyStoreLib();
-			}
-
 			final AOKeyStoreManager ksm;
 			try {
-				ksm = ProtocolInvocationLauncherUtil.getAOKeyStoreManager(aoks, aoksLib);
+				ksm = ProtocolInvocationLauncherUtil.getAOKeyStoreManager(ks, ksLib);
 			}
 			catch (final AOCancelledOperationException e) {
 				LOGGER.info("Operacion cancelada por el usuario: " + e); //$NON-NLS-1$
@@ -260,12 +258,10 @@ final class ProtocolInvocationLauncherBatch {
 			}
 
 			try {
-				if (Platform.OS.MACOSX.equals(Platform.getOS())) {
-					MacUtils.focusApplication();
-				}
+				MacUtils.focusApplication();
 				String libName = null;
-				if (aoksLib != null) {
-					final File file = new File(aoksLib);
+				if (ksLib != null) {
+					final File file = new File(ksLib);
 					libName = file.getName();
 				}
 				ProgressInfoDialogManager.hideProgressDialog();
@@ -323,8 +319,8 @@ final class ProtocolInvocationLauncherBatch {
 			batchResult = signBatch(options, pke);
 		}
 		catch (final PinException e) {
-			// Si falla la operacion por culpa del PIN, configuramos el uso del mismo certificado, pero obligamos al
-			// almacen a cargarse de nuevo
+			LOGGER.warning("PIN invalido. Reintentamos la operacion: " + e); //$NON-NLS-1$
+			// Forzando el reinicio del almacen y la seleccion automatica de ese certificado
 			List<CertificateFilter> filters;
 			try {
 				final byte[] certEncoded = pke.getCertificate().getEncoded();
@@ -336,7 +332,7 @@ final class ProtocolInvocationLauncherBatch {
 			}
 			final CertFilterManager newFilterManager = new CertFilterManager(filters, filters != null, true);
 			ProtocolInvocationLauncher.setStickyKeyEntry(null);
-			return sign(options, aoks, useDefaultStore, newFilterManager, protocolVersion);
+			return sign(options, ks, ksLib, useDefaultStore, newFilterManager, protocolVersion);
 		}
 		catch (final AOCancelledOperationException e) {
 			LOGGER.info("Operacion cancelada por el usuario: " + LoggerUtil.getTrimStr(e.toString())); //$NON-NLS-1$

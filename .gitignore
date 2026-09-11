@@ -19,8 +19,11 @@ local.properties
 # Maven Shade plugin
 dependency-reduced-pom.xml
 
-# Eclipse Core
+# Ficheros Eclipse
 .project
+
+# Ficheros IntelliJ
+.idea/
 
 # External tool builders
 .externalToolBuilders/

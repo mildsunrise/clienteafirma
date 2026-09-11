@@ -384,6 +384,16 @@ public final class SimpleKeyStoreManager {
     	return getValidKeyStoreType(savedStoreName);
     }
 
+	/**
+	 * Obtiene la &uacute;ltima biblioteca de almac&eacute;n de claves seleccionada por el usuario. En caso de que
+	 * no se seleccionase ninguna (probablemente porque el almacen sea distinto de PKCS#11 o PKCS#12), se
+	 * devolver&aacute; {@code null}.
+	 * @return Biblioteca seleccionada por el usuario o {@code null} si no se seleccion&oacute;.
+	 */
+	public static String getLastSelectedKeystoreLib() {
+		return KeyStorePreferencesManager.getLastSelectedKeystoreLib();
+	}
+
     /**
      * Devuelve el gestor del almac&eacute;n de claves del sistema.
      * @param parent Componente padre.

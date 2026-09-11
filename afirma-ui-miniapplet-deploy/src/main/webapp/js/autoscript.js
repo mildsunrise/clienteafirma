@@ -2655,8 +2655,6 @@ var AutoScript = ( function ( window, undefined ) {
 					return;
 				}
 				
-console.log(" === Respuesta del socket: " + (data.length > 20 ? data.substring(0, 20) : data));
-				
 				// Se recibe un mensaje de espera, la operacion solicitada no ha terminado aun
 				if (data == "#wait") {
 					setTimeout(function() {
@@ -2898,9 +2896,6 @@ console.log(" === Respuesta del socket: " + (data.length > 20 ? data.substring(0
 			 * Procesa la respuesta de una operacion de firma.
 			 */
 			function processSignResponse(data) {
-
-				
-console.log(" === La procesamos como respuesta de firma");
 								
 				// Si no se proporciona funcion de exito, no se procesa la respuesta
 				if (!successCallback) {
@@ -2932,9 +2927,6 @@ console.log(" === La procesamos como respuesta de firma");
 				if (!!successCallback) {
 					var responseSuccessCallback = successCallback;
 					setCallbacks(null, null);
-					
-console.log(" === Llamamos al metodo callback de respuesta: " + responseSuccessCallback);
-					
 					responseSuccessCallback(signature, certificate, extraInfo);
 				}
 				else {

@@ -26,12 +26,11 @@ public final class TestRFC2254CertificateFilter {
 			ClassLoader.getSystemResourceAsStream("Tomas_DNI_FIRMA.cer") //$NON-NLS-1$
 		);
 
-		RFC2254CertificateFilter filter;
+		RFC2254CertificateFilter filter = new RFC2254CertificateFilter(
+					"SERIALNUMBER=11830960J", //$NON-NLS-1$
+					"O=*POLIC*" //$NON-NLS-1$
+				);
 
-		filter = new RFC2254CertificateFilter(
-			"SERIALNUMBER=11830960J", //$NON-NLS-1$
-			"O=*POLIC*" //$NON-NLS-1$
-		);
 		Assert.assertTrue(filter.matches(cert));
 
 		filter = new RFC2254CertificateFilter(
@@ -63,7 +62,7 @@ public final class TestRFC2254CertificateFilter {
 	@Test
 	@SuppressWarnings("static-method")
 	public void TestRFC2254CertificateRecursiveFilter() throws Exception {
-		final RFC2254CertificateFilter filter = new RFC2254CertificateFilter(null, "cn=ANF Global Root CA", true);  //$NON-NLS-1$
+		final RFC2254CertificateFilter filter = new RFC2254CertificateFilter(null, "cn=ANF Global Root CA");  //$NON-NLS-1$
 
 		AOKeyStoreManager ksm;
 		if (Platform.getOS() == Platform.OS.WINDOWS) {

@@ -9,37 +9,10 @@
 
 package es.gob.afirma.standalone.protocol;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStore.PrivateKeyEntry;
-import java.security.MessageDigest;
-import java.security.cert.CertificateEncodingException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.swing.JDialog;
-import javax.swing.JOptionPane;
-
 import es.gob.afirma.ciphers.ServerCipher;
 import es.gob.afirma.ciphers.ServerCipherFactory;
-import es.gob.afirma.core.AOCancelledOperationException;
-import es.gob.afirma.core.AOControlledException;
-import es.gob.afirma.core.AOException;
-import es.gob.afirma.core.AOFormatFileException;
-import es.gob.afirma.core.AOInvalidSignatureFormatException;
-import es.gob.afirma.core.ErrorCode;
-import es.gob.afirma.core.RuntimeConfigNeededException;
+import es.gob.afirma.core.*;
 import es.gob.afirma.core.RuntimeConfigNeededException.RequestType;
-import es.gob.afirma.core.RuntimePasswordNeededException;
-import es.gob.afirma.core.SignaturePolicyIncompatibilityException;
 import es.gob.afirma.core.keystores.CertificateContext;
 import es.gob.afirma.core.keystores.KeyStoreManager;
 import es.gob.afirma.core.keystores.LockedKeyStoreException;
@@ -51,21 +24,10 @@ import es.gob.afirma.core.misc.Platform;
 import es.gob.afirma.core.misc.protocol.ProtocolVersion;
 import es.gob.afirma.core.misc.protocol.UrlParametersToSignAndSave;
 import es.gob.afirma.core.prefs.KeyStorePreferencesManager;
-import es.gob.afirma.core.signers.AOSignConstants;
-import es.gob.afirma.core.signers.AOSigner;
-import es.gob.afirma.core.signers.AOSignerFactory;
-import es.gob.afirma.core.signers.AOTriphaseException;
-import es.gob.afirma.core.signers.CounterSignTarget;
-import es.gob.afirma.core.signers.ExtraParamsProcessor;
-import es.gob.afirma.core.signers.OptionalDataInterface;
+import es.gob.afirma.core.signers.*;
 import es.gob.afirma.core.ui.AOUIFactory;
 import es.gob.afirma.core.ui.GenericFileFilter;
-import es.gob.afirma.keystores.AOCertificatesNotFoundException;
-import es.gob.afirma.keystores.AOKeyStore;
-import es.gob.afirma.keystores.AOKeyStoreDialog;
-import es.gob.afirma.keystores.AOKeyStoreManager;
-import es.gob.afirma.keystores.CertificateFilter;
-import es.gob.afirma.keystores.KeyStoreErrorCode;
+import es.gob.afirma.keystores.*;
 import es.gob.afirma.keystores.filters.CertFilterManager;
 import es.gob.afirma.keystores.filters.EncodedCertificateFilter;
 import es.gob.afirma.signers.pades.AOPDFSigner;
@@ -82,21 +44,10 @@ import es.gob.afirma.signvalidation.SignValiderFactory;
 import es.gob.afirma.signvalidation.SignValidity;
 import es.gob.afirma.signvalidation.SignValidity.SIGN_DETAIL_TYPE;
 import es.gob.afirma.signvalidation.SignValidity.VALIDITY_ERROR;
-import es.gob.afirma.standalone.DesktopUtil;
-import es.gob.afirma.standalone.SimpleAfirma;
-import es.gob.afirma.standalone.SimpleAfirmaMessages;
-import es.gob.afirma.standalone.SimpleErrorCode;
-import es.gob.afirma.standalone.SimpleKeyStoreManager;
+import es.gob.afirma.standalone.*;
 import es.gob.afirma.standalone.configurator.common.PreferencesManager;
-import es.gob.afirma.standalone.plugins.AfirmaPlugin;
-import es.gob.afirma.standalone.plugins.EncryptingException;
-import es.gob.afirma.standalone.plugins.Permission;
-import es.gob.afirma.standalone.plugins.PluginControlledException;
-import es.gob.afirma.standalone.plugins.PluginInfo;
-import es.gob.afirma.standalone.plugins.SignDataProcessor;
-import es.gob.afirma.standalone.plugins.SignOperation;
+import es.gob.afirma.standalone.plugins.*;
 import es.gob.afirma.standalone.plugins.SignOperation.Operation;
-import es.gob.afirma.standalone.plugins.SignResult;
 import es.gob.afirma.standalone.plugins.manager.PermissionChecker;
 import es.gob.afirma.standalone.plugins.manager.PluginException;
 import es.gob.afirma.standalone.so.macos.MacUtils;
@@ -105,9 +56,16 @@ import es.gob.afirma.standalone.ui.ProgressInfoDialogManager;
 import es.gob.afirma.standalone.ui.pdf.SignPdfDialog;
 import es.gob.afirma.standalone.ui.pdf.SignPdfDialog.SignPdfDialogListener;
 
-final class ProtocolInvocationLauncherSignAndSave {
+import javax.swing.*;
+import java.io.*;
+import java.security.KeyStore.PrivateKeyEntry;
+import java.security.MessageDigest;
+import java.security.cert.CertificateEncodingException;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-	public static final String RESULT_CANCEL = "CANCEL"; //$NON-NLS-1$
+final class ProtocolInvocationLauncherSignAndSave {
 
 	private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
@@ -179,21 +137,20 @@ final class ProtocolInvocationLauncherSignAndSave {
 		final List<SignOperation> operations = processor.preProcess(operation);
 		final boolean isMassiveSign = operations.size() > 1;
 		final List<SignResult> results = new ArrayList<>(operations.size());
-		for (int i = 0; i < operations.size(); i++) {
-			final SignOperation op = operations.get(i);
-			try {
-				results.add(sign(op, options, isMassiveSign));
-			}
-			catch (final SocketOperationException e) {
-				LOGGER.log(Level.SEVERE, "Se identifico un error en una operacion de firma", e); //$NON-NLS-1$
-				// Salvo que el procesador indique que se permiten los errores, se relanza para
-				// bloquear la ejecucion
-				if (!processor.isErrorsAllowed()) {
-					ProgressInfoDialogManager.hideProgressDialog();
-					throw e;
-				}
-			}
-		}
+        for (final SignOperation op : operations) {
+            try {
+                results.add(sign(op, options, isMassiveSign));
+            }
+            catch (final SocketOperationException e) {
+                LOGGER.log(Level.SEVERE, "Se identifico un error en una operacion de firma", e); //$NON-NLS-1$
+                // Salvo que el procesador indique que se permiten los errores, se relanza para
+                // bloquear la ejecucion
+                if (!processor.isErrorsAllowed()) {
+                    ProgressInfoDialogManager.hideProgressDialog();
+                    throw e;
+                }
+            }
+        }
 
 		StringBuilder dataToSend;
 		try {
@@ -265,32 +222,6 @@ final class ProtocolInvocationLauncherSignAndSave {
 				final ErrorCode errorCode = ErrorCode.Request.UNSUPPORTED_SIGNATURE_FORMAT;
 				throw new SocketOperationException(errorCode);
 			}
-		}
-
-		final String lastSelectedKeyStore = KeyStorePreferencesManager.getLastSelectedKeystore();
-		final boolean useDefaultStore = PreferencesManager.getBoolean(PreferencesManager.PREFERENCE_USE_DEFAULT_STORE_IN_BROWSER_CALLS);
-
-		// Si hay marcado un almacen como el ultimo seleccionado, lo usamos (este es el caso en el que se llaman
-		// varias operaciones de firma dentro de la misma invocacion a la aplicacion)
-		AOKeyStore aoks = null;
-		if (lastSelectedKeyStore != null && !lastSelectedKeyStore.isEmpty()) {
-			aoks = SimpleKeyStoreManager.getLastSelectedKeystore();
-		}
-		// Si no, si el usuario definio un almacen por defecto para usarlo en las llamadas a la aplicacion, lo usamos
-		else if (useDefaultStore) {
-			final String defaultStore = PreferencesManager.get(PreferencesManager.PREFERENCE_KEYSTORE_DEFAULT_STORE);
-			if (!PreferencesManager.VALUE_KEYSTORE_DEFAULT.equals(defaultStore)) {
-				aoks = SimpleKeyStoreManager.getKeyStore(defaultStore, true);
-			}
-		}
-		// Si no, si en la llamada se definio el almacen que se debia usar, lo usamos
-		else {
-			aoks = SimpleKeyStoreManager.getKeyStore(options.getDefaultKeyStore(), true);
-		}
-
-		// Si aun no se ha definido el almacen, se usara el por defecto para el sistema operativo
-		if (aoks == null) {
-			aoks = AOKeyStore.getDefaultKeyStoreTypeByOs(Platform.getOS());
 		}
 
 		// Comprobamos si es necesario pedir datos de entrada al usuario
@@ -520,24 +451,59 @@ final class ProtocolInvocationLauncherSignAndSave {
 					"Es obligatorio mostrar la firma en el documento PDF")); //$NON-NLS-1$
 		}
 
-		PrivateKeyEntry pke = null;
+		final String lastSelectedKeyStore = KeyStorePreferencesManager.getLastSelectedKeystore();
+		final boolean useDefaultStore = PreferencesManager.getBoolean(PreferencesManager.PREFERENCE_USE_DEFAULT_STORE_IN_BROWSER_CALLS);
+
+		// Si hay marcado un almacen como el ultimo seleccionado, lo usamos (este es el caso en el que se llaman
+		// varias operaciones de firma dentro de la misma invocacion a la aplicacion)
+		AOKeyStore aoks = null;
 		String keyStoreLib = null;
+		if (lastSelectedKeyStore != null && !lastSelectedKeyStore.isEmpty()) {
+			aoks = SimpleKeyStoreManager.getLastSelectedKeystore();
+			if (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks)) {
+				keyStoreLib = SimpleKeyStoreManager.getLastSelectedKeystoreLib();
+			}
+		}
+		// Si no, si el usuario definio un almacen por defecto para usarlo en las llamadas a la aplicacion, lo usamos
+		else if (useDefaultStore) {
+			final String defaultStore = PreferencesManager.get(PreferencesManager.PREFERENCE_KEYSTORE_DEFAULT_STORE);
+			if (!PreferencesManager.VALUE_KEYSTORE_DEFAULT.equals(defaultStore)) {
+				aoks = SimpleKeyStoreManager.getKeyStore(defaultStore, true);
+				if (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks)) {
+					keyStoreLib = PreferencesManager.get(PreferencesManager.PREFERENCE_LOCAL_KEYSTORE_PATH);
+				}
+			}
+		}
+		// Si no, si en la llamada se definio el almacen que se debia usar, lo usamos
+		else {
+			aoks = SimpleKeyStoreManager.getKeyStore(options.getDefaultKeyStore(), true);
+			keyStoreLib = options.getDefaultKeyStoreLib();
+		}
+
+		// Si aun no se ha definido el almacen, se usara el por defecto para el sistema operativo
+		if (aoks == null) {
+			aoks = AOKeyStore.getDefaultKeyStoreTypeByOs(Platform.getOS());
+		}
+
+		PrivateKeyEntry pke = null;
 
 		// Identificamos si hay una clave preseleccionada que debemos usar. Si no, identificamos
 		// la biblioteca por defecto que se usara si el almacen lo requiere
 		if (options.getSticky() && !options.getResetSticky()
 				&& ProtocolInvocationLauncher.getStickyKeyEntry() != null) {
 			pke = ProtocolInvocationLauncher.getStickyKeyEntry();
-		} else if (useDefaultStore && (AOKeyStore.PKCS12.equals(aoks) || AOKeyStore.PKCS11.equals(aoks))) {
-			keyStoreLib = PreferencesManager.get(PreferencesManager.PREFERENCE_LOCAL_KEYSTORE_PATH);
-		} else {
-			keyStoreLib = options.getDefaultKeyStoreLib();
 		}
 
 		final boolean stickySignatory = options.getSticky();
 
-		final SignOperationResult operationResult = selectCertAndSign(pke, aoks, keyStoreLib, filterManager, stickySignatory,
-				data, algorithm, signer, cryptoOperation, extraParams);
+		final SignOperationResult operationResult;
+		try {
+			operationResult = selectCertAndSign(pke, aoks, keyStoreLib, filterManager, stickySignatory,
+					data, algorithm, signer, cryptoOperation, extraParams);
+		}
+		finally {
+			ProgressInfoDialogManager.hideProgressDialog();
+		}
 
 		final byte[] signature = operationResult.getResult();
 		pke = operationResult.getPke();
@@ -963,13 +929,9 @@ final class ProtocolInvocationLauncherSignAndSave {
 		// Comprobamos que la bandera que indica si se debe solicitar la firma visible
 		// tiene un valor valido.
 		final String visibleSignature = extraParams.get(PdfExtraParams.VISIBLE_SIGNATURE).toString();
-		if (!PdfExtraParams.VISIBLE_SIGNATURE_VALUE_WANT.equalsIgnoreCase(visibleSignature)
-				&& !PdfExtraParams.VISIBLE_SIGNATURE_VALUE_OPTIONAL.equalsIgnoreCase(visibleSignature)) {
-			return false;
-		}
-
-		return true;
-	}
+        return PdfExtraParams.VISIBLE_SIGNATURE_VALUE_WANT.equalsIgnoreCase(visibleSignature)
+                || PdfExtraParams.VISIBLE_SIGNATURE_VALUE_OPTIONAL.equalsIgnoreCase(visibleSignature);
+    }
 
 	/**
 	 * M&eacute;todo que muestra el dialogo para seleccionar la posici&oacute;n de
@@ -999,7 +961,7 @@ final class ProtocolInvocationLauncherSignAndSave {
 			final String visibleSignature = extraParams.get(PdfExtraParams.VISIBLE_SIGNATURE) != null
 					? extraParams.get(PdfExtraParams.VISIBLE_SIGNATURE).toString()
 					: null;
-			final boolean want = PdfExtraParams.VISIBLE_SIGNATURE_VALUE_WANT.equalsIgnoreCase(visibleSignature) == true;
+			final boolean want = PdfExtraParams.VISIBLE_SIGNATURE_VALUE_WANT.equalsIgnoreCase(visibleSignature);
 
 			// Comprobamos si se han indicado la lista de atributos del area de firma
 			// visible.

@@ -9,6 +9,24 @@
 
 package es.gob.afirma.standalone.protocol;
 
+import es.gob.afirma.core.AOCancelledOperationException;
+import es.gob.afirma.core.ErrorCode;
+import es.gob.afirma.core.InvalidDomainSSLCertificateException;
+import es.gob.afirma.core.misc.LoggerUtil;
+import es.gob.afirma.core.misc.Platform;
+import es.gob.afirma.core.misc.protocol.*;
+import es.gob.afirma.signers.batch.client.TriphaseDataParser;
+import es.gob.afirma.standalone.JMulticardUtilities;
+import es.gob.afirma.standalone.SimpleAfirma;
+import es.gob.afirma.standalone.SimpleErrorCode;
+import es.gob.afirma.standalone.configurator.common.PreferencesManager;
+import es.gob.afirma.standalone.protocol.ProtocolInvocationLauncherUtil.DecryptionException;
+import es.gob.afirma.standalone.ui.AboutDialog;
+import es.gob.afirma.standalone.ui.OSXHandler;
+import es.gob.afirma.standalone.ui.tasks.LoadKeystoreTask;
+
+import javax.net.ssl.SSLHandshakeException;
+import javax.swing.*;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
@@ -22,35 +40,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.net.ssl.SSLHandshakeException;
-import javax.swing.JOptionPane;
-
-import es.gob.afirma.core.AOCancelledOperationException;
-import es.gob.afirma.core.ErrorCode;
-import es.gob.afirma.core.InvalidDomainSSLCertificateException;
-import es.gob.afirma.core.misc.LoggerUtil;
-import es.gob.afirma.core.misc.Platform;
-import es.gob.afirma.core.misc.protocol.ParameterException;
-import es.gob.afirma.core.misc.protocol.ParameterLocalAccessRequestedException;
-import es.gob.afirma.core.misc.protocol.ProtocolInvocationUriParser;
-import es.gob.afirma.core.misc.protocol.ProtocolInvocationUriParserUtil;
-import es.gob.afirma.core.misc.protocol.ProtocolVersion;
-import es.gob.afirma.core.misc.protocol.UrlParametersForBatch;
-import es.gob.afirma.core.misc.protocol.UrlParametersToLoad;
-import es.gob.afirma.core.misc.protocol.UrlParametersToSave;
-import es.gob.afirma.core.misc.protocol.UrlParametersToSelectCert;
-import es.gob.afirma.core.misc.protocol.UrlParametersToSign;
-import es.gob.afirma.core.misc.protocol.UrlParametersToSignAndSave;
-import es.gob.afirma.signers.batch.client.TriphaseDataParser;
-import es.gob.afirma.standalone.JMulticardUtilities;
-import es.gob.afirma.standalone.SimpleAfirma;
-import es.gob.afirma.standalone.SimpleErrorCode;
-import es.gob.afirma.standalone.configurator.common.PreferencesManager;
-import es.gob.afirma.standalone.protocol.ProtocolInvocationLauncherUtil.DecryptionException;
-import es.gob.afirma.standalone.ui.AboutDialog;
-import es.gob.afirma.standalone.ui.OSXHandler;
-import es.gob.afirma.standalone.ui.tasks.LoadKeystoreTask;
 
 /**
  * Gestiona la ejecuci&oacute;n de Autofirma en una invocaci&oacute;n por
@@ -96,7 +85,7 @@ public final class ProtocolInvocationLauncher {
 	 */
 	private static final int DEFAULT_WEBSOCKET_PORT = 63117;
 
-    /** Clave privada fijada para reutilizarse en operaciones sucesivas. */
+	/** Clave privada fijada para reutilizarse en operaciones sucesivas. */
 	private static PrivateKeyEntry stickyKeyEntry = null;
 
 	/**
@@ -111,6 +100,8 @@ public final class ProtocolInvocationLauncher {
     private static ProtocolVersion requestedProtocolVersion = null;
 
     private static LoadKeystoreTask loadKeyStoreTask = null;
+
+    private static SecurityManager securityManager = new SecurityManager();
 
 	/**
 	 * Recupera la entrada con la clave y certificado prefijados para las
@@ -221,7 +212,7 @@ public final class ProtocolInvocationLauncher {
 				.getBoolean(PreferencesManager.PREFERENCE_GENERAL_ENABLED_JMULTICARD);
         JMulticardUtilities.configureJMulticard(jMulticardEnabled);
 
-        // Por defecto, usaremos la version de protocolo proporcionada para la operacion,
+		// Por defecto, usaremos la version de protocolo proporcionada para la operacion,
         // aunque se extraera de la URL de llamada en caso de se una peticion de apertura de
         // servicio de sockets o websockets
         requestedProtocolVersion = protocolVersion;
@@ -340,6 +331,8 @@ public final class ProtocolInvocationLauncher {
                 UrlParametersForBatch params =
                 		ProtocolInvocationUriParserUtil.getParametersToBatch(urlParams, !bySocket);
 
+                securityManager.checkServices(params, !bySocket);
+
 				// Si se indica un identificador de fichero, es que el JSON o XML de definicion de lote
 				// se tiene que
                 // descargar desde el servidor intermedio
@@ -431,6 +424,8 @@ public final class ProtocolInvocationLauncher {
         		UrlParametersToSelectCert params =
         				ProtocolInvocationUriParserUtil.getParametersToSelectCert(urlParams, !bySocket);
 
+        		securityManager.checkServices(params, !bySocket);
+
         		// Si se indica un identificador de fichero, es que la configuracion de la
         		// operacion
         		// se tiene que descargar desde el servidor intermedio
@@ -507,12 +502,16 @@ public final class ProtocolInvocationLauncher {
         		}
 
         		return msg;
+        	} catch (final ParameterLocalAccessRequestedException e) {
+        		LOGGER.log(Level.SEVERE, "No se permite el acceso a un servicio local", e); //$NON-NLS-1$
+        		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
+        		return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
         	} catch (final ParameterException e) {
-        		LOGGER.log(Level.SEVERE, "Error en los parametros de seleccion de certificados: " + e, e); //$NON-NLS-1$
+        		LOGGER.log(Level.SEVERE, "Error en los parametros de seleccion de certificados", e); //$NON-NLS-1$
         		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
         		return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
         	} catch (final Exception e) {
-        		LOGGER.log(Level.SEVERE, "Error en los parametros de seleccion de certificados: " + e, e); //$NON-NLS-1$
+        		LOGGER.log(Level.SEVERE, "Error en los parametros de seleccion de certificados", e); //$NON-NLS-1$
         		final ErrorCode errorCode = SimpleErrorCode.Internal.UNKNOWN_SELECTING_CERT_ERROR;
         		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, errorCode);
         		return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, errorCode);
@@ -524,6 +523,8 @@ public final class ProtocolInvocationLauncher {
             try {
                 UrlParametersToSave params =
                 		ProtocolInvocationUriParserUtil.getParametersToSave(urlParams, !bySocket);
+
+                securityManager.checkServices(params, !bySocket);
 
                 LOGGER.info("Cantidad de datos a guardar: " + (params.getData() == null ? 0 : params.getData().length)); //$NON-NLS-1$
 
@@ -599,8 +600,8 @@ public final class ProtocolInvocationLauncher {
 				ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterLocalAccessRequestedException e) {
-                LOGGER.severe("Se ha pedido un acceso a una direccion local (localhost o 127.0.0.1): " + e); //$NON-NLS-1$
-				ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
+				LOGGER.log(Level.SEVERE, "No se permite el acceso a un servicio local", e); //$NON-NLS-1$
+        		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterException e) {
             	LOGGER.log(Level.SEVERE, "Error en los parametros de guardado", e); //$NON-NLS-1$
@@ -619,6 +620,8 @@ public final class ProtocolInvocationLauncher {
             try {
                 UrlParametersToSignAndSave params =
                 		ProtocolInvocationUriParserUtil.getParametersToSignAndSave(urlParams, !bySocket);
+
+                securityManager.checkServices(params, !bySocket);
 
 				LOGGER.info("Cantidad de datos a firmar y guardar: " //$NON-NLS-1$
 						+ (params.getData() == null ? 0 : params.getData().length));
@@ -696,8 +699,8 @@ public final class ProtocolInvocationLauncher {
 				ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterLocalAccessRequestedException e) {
-                LOGGER.severe("Se ha pedido un acceso a una direccion local (localhost o 127.0.0.1): " + e); //$NON-NLS-1$
-                ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
+				LOGGER.log(Level.SEVERE, "No se permite el acceso a un servicio local", e); //$NON-NLS-1$
+        		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterException e) {
                 LOGGER.log(Level.SEVERE, "Error en los parametros de firma y guardado: " + e, e); //$NON-NLS-1$
@@ -719,6 +722,8 @@ public final class ProtocolInvocationLauncher {
             try {
                 UrlParametersToSign params =
                 		ProtocolInvocationUriParserUtil.getParametersToSign(urlParams, !bySocket);
+
+                securityManager.checkServices(params, !bySocket);
 
 				// Si se indica un identificador de fichero, es que la configuracion de la
 				// operacion
@@ -779,7 +784,7 @@ public final class ProtocolInvocationLauncher {
 				// solo entra en la excepcion en el caso de que haya que devolver errores a
 				// traves del servidor intermedio
                 catch(final SocketOperationException e) {
-                    LOGGER.severe("Error durante la operacion de firma: " + e); //$NON-NLS-1$
+                    LOGGER.log(Level.SEVERE,"Error durante la operacion de firma", e); //$NON-NLS-1$
                     msg = ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
                 }
 
@@ -796,8 +801,8 @@ public final class ProtocolInvocationLauncher {
 				ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterLocalAccessRequestedException e) {
-                LOGGER.severe("Se ha pedido un acceso a una direccion local (localhost o 127.0.0.1): " + e); //$NON-NLS-1$
-                ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
+				LOGGER.log(Level.SEVERE, "No se permite el acceso a un servicio local", e); //$NON-NLS-1$
+        		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterException e) {
             	LOGGER.log(Level.SEVERE, "Error en los parametros de firma", e); //$NON-NLS-1$
@@ -816,6 +821,8 @@ public final class ProtocolInvocationLauncher {
             try {
                 UrlParametersToLoad params =
                 		ProtocolInvocationUriParserUtil.getParametersToLoad(urlParams);
+
+                securityManager.checkServices(params, !bySocket);
 
 				// Si se indica un identificador de fichero, es que la configuracion de la
 				// operacion
@@ -888,8 +895,8 @@ public final class ProtocolInvocationLauncher {
 				ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterLocalAccessRequestedException e) {
-                LOGGER.severe("Se ha pedido un acceso a una direccion local (localhost o 127.0.0.1): " + e); //$NON-NLS-1$
-                ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
+				LOGGER.log(Level.SEVERE, "No se permite el acceso a un servicio local", e); //$NON-NLS-1$
+        		ProtocolInvocationLauncherErrorManager.showError(requestedProtocolVersion, e);
 				return ProtocolInvocationLauncherErrorManager.getErrorMessage(requestedProtocolVersion, e.getErrorCode());
 			} catch (final ParameterException e) {
                 LOGGER.severe("Error en los parametros de carga: " + e); //$NON-NLS-1$
@@ -1143,7 +1150,6 @@ public final class ProtocolInvocationLauncher {
 		}
 		return false;
 	}
-
 
 	/**
 	 * Inicia en segundo plano la tarea para cargar del almac&eacute;n de claves por defecto

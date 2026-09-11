@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
@@ -145,18 +146,14 @@ final class CommandLineLauncher {
 				// reconocido por alguno de los plugins
 				else {
 					final PluginCommand pluginCommand = getPluginCommand(args[0].toLowerCase());
-					if (pluginCommand != null) {
-						response = processPluginCommand(pluginCommand, args);
-					}
-					// Si no es un comando reconocido ni por la aplicacion ni por los plugins,
-					// mostramos un error
-					else {
+					if (pluginCommand == null) {
 						throw new UnsupportedOperationException(
 								buildGeneralSyntax(
 										CommandLineMessages.getString(
 												"CommandLineLauncher.15", //$NON-NLS-1$
 												args[0])));
 					}
+					response = processPluginCommand(pluginCommand, args);
 				}
 			}
 			catch (final CommandLineParameterException e) {
@@ -175,7 +172,7 @@ final class CommandLineLauncher {
 
 				String msg;
 				final Throwable cause = e.getCause();
-				if (cause != null && cause instanceof KeystoreAlternativeException) {
+				if (cause instanceof KeystoreAlternativeException) {
 					msg = CommandLineMessages.getString("CommandLineLauncher.49", cause.getMessage()); //$NON-NLS-1$
 				} else if (cause != null) {
 					msg = cause.getMessage();
@@ -283,9 +280,7 @@ final class CommandLineLauncher {
 			final PluginInfo info = plugin.getInfo();
 			final PluginCommand[] pluginCommands = info.getCommands();
 			if (pluginCommands != null) {
-				for (final PluginCommand pluginCommand : pluginCommands) {
-					commands.add(pluginCommand);
-				}
+				Collections.addAll(commands, pluginCommands);
 			}
 		}
 		return commands.toArray(new PluginCommand[0]);
@@ -774,15 +769,13 @@ final class CommandLineLauncher {
 			);
 		}
 
-		Properties extraParamsProperties = null;
-
 		// Si el formato es "auto", configuramos un formato valido para el tipo de fichero
 		String format = fmt;
 		if (CommandLineParameters.FORMAT_AUTO.equals(fmt)) {
 			format = selectFormatByData(data);
 		}
 
-		extraParamsProperties = buildProperties(extraParams);
+		final Properties extraParamsProperties = buildProperties(extraParams);
 
 		// Instanciamos un firmador del tipo adecuado
 		final AOSigner signer;

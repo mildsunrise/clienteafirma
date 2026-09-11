@@ -29,6 +29,9 @@ public abstract class UrlParameters {
 
 	protected static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
+	/** Codificaci&oacute;n por defecto. */
+	private static final String DEFAULT_ENCODING = StandardCharsets.UTF_8.name();
+
 	/** Par&aacute;metro de entrada con las opciones de configuraci&oacute;n de la firma. */
 	protected static final String PROPERTIES_PARAM = "properties"; //$NON-NLS-1$
 
@@ -82,9 +85,6 @@ public abstract class UrlParameters {
 
 	/** Tiempo de espera para la lectura de peticiones. */
 	protected static final String SERVICE_TIMEOUT_PARAM = "servicetimeout"; //$NON-NLS-1$
-
-	/** Codificaci&oacute;n por defecto. */
-	private static final String DEFAULT_ENCODING = StandardCharsets.UTF_8.name();
 
 	protected byte[] data = null;
 	private String fileId = null;
@@ -328,11 +328,6 @@ public abstract class UrlParameters {
 						)
 					);
 				}
-				catch (final LocalAccessRequestException e) {
-					throw new ParameterLocalAccessRequestedException(
-						"La URL del servicio de recuperacion de datos no puede ser local", e, ErrorCode.Request.LOCAL_RETRIEVE_URL //$NON-NLS-1$
-					);
-				}
 				catch (final IllegalArgumentException e) {
 					throw new ParameterException(
 						"Error al validar la URL del servlet de recuperacion: " + e, e, //$NON-NLS-1$
@@ -346,7 +341,7 @@ public abstract class UrlParameters {
 			if (dataPrm.startsWith("file:/")) { //$NON-NLS-1$
 				throw new ParameterException(
 					"No se permite la lectura de ficheros locales: " + dataPrm, //$NON-NLS-1$
-					ErrorCode.Request.RETRIEVE_URL_TO_SIGN_CANT_BE_LOCAL
+					ErrorCode.Request.LOCAL_RETRIEVE_URL
 				);
 			}
 			try {
@@ -397,7 +392,7 @@ public abstract class UrlParameters {
 
 		// Si se ha indicado el parametro pero no un valor, se intepretara que no hay cifrado
 		final String key = params.get(KEY_PARAM);
-		if (key == null || key.length() == 0) {
+		if (key == null || key.isEmpty()) {
 			return null;
 		}
 
@@ -422,9 +417,8 @@ public abstract class UrlParameters {
 	 * @param url URL que se desea validar.
 	 * @return URL formada y validada.
 	 * @throws IllegalArgumentException Cuando ocurre alg&uacute;n problema al validar la URL.
-	 * @throws LocalAccessRequestException Cuando la URL usa los dominios localhost o 127.0.0.1.
 	 */
-	protected static URL validateURL(final String url) throws IllegalArgumentException, LocalAccessRequestException {
+	protected static URL validateURL(final String url) throws IllegalArgumentException {
 
 		// Comprobamos que la URL sea valida
 		final URL servletUrl;
@@ -442,16 +436,15 @@ public abstract class UrlParameters {
 				"El protocolo de la URL proporcionada para el servlet no esta soportado: " + servletUrl.getProtocol() //$NON-NLS-1$
 			);
 		}
-		// Comprobamos que la URL sea una llamada al servlet y que no sea local
-		if ("localhost".equals(servletUrl.getHost()) || "127.0.0.1".equals(servletUrl.getHost())) { //$NON-NLS-1$ //$NON-NLS-2$
-			throw new LocalAccessRequestException(
-				"El host de la URL proporcionada para el Servlet es local" //$NON-NLS-1$
-			);
-		}
 		// El servlet no puede recibir parametros
 		if (servletUrl.toString().indexOf('?') != -1 || servletUrl.toString().indexOf('=') != -1) {
 			throw new IllegalArgumentException("Se han encontrado parametros en la URL del servlet"); //$NON-NLS-1$
 		}
+		final String host = servletUrl.getHost();
+		if (host == null || host.trim().isEmpty()) {
+			throw new IllegalArgumentException("El host de la URL proporcionada no es valido"); //$NON-NLS-1$
+		}
+
 		return servletUrl;
 	}
 

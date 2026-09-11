@@ -67,7 +67,7 @@ final class ProtocolInvocationLauncherUtil {
 					append("?op=get&v=1_0&id=") //$NON-NLS-1$
 							.append(params.getFileId());
 
-		LOGGER.info("Intentamos recuperar los datos del servidor con la URL:\n" + dataUrl.toString()); //$NON-NLS-1$
+		LOGGER.info("Intentamos recuperar los datos del servidor con la URL:\n" + dataUrl); //$NON-NLS-1$
 
 		//Comprobamos que ya se haya configurado el contexto SSL
 		try {
@@ -206,7 +206,13 @@ final class ProtocolInvocationLauncherUtil {
 		else {
 			try {
 				final AOSigner signer = AOSignerFactory.getSigner(data);
-				format = AOSignerFactory.getSignFormat(signer);
+				if (signer != null) {
+					format = AOSignerFactory.getSignFormat(signer);
+				}
+				else {
+					LOGGER.info("Los datos no se corresponden con un formato de firma soportado"); //$NON-NLS-1$
+					format = null;
+				}
 			}
 			catch (final IOException e) {
 				LOGGER.severe(
@@ -258,13 +264,21 @@ final class ProtocolInvocationLauncherUtil {
 		}
 
 		final PasswordCallback pwc = aoks.getStorePasswordCallback(null);
-
-		return AOKeyStoreManagerFactory.getAOKeyStoreManager(aoks, // Store
-				aoksLib, // Lib
-				null, // Description
-				pwc, // PasswordCallback
-				null // Parent
-				);
-
+		try {
+			return AOKeyStoreManagerFactory.getAOKeyStoreManager(aoks, // Store
+					aoksLib, // Lib
+					null, // Description
+					pwc, // PasswordCallback
+					null // Parent
+			);
+		}
+		catch (final KeystoreAlternativeException e) {
+			final AOKeyStore ksType = e.getAlternativeKsm();
+			if (ksType != null && ksType == aoks) {
+				throw e;
+			}
+			LOGGER.warning("No se pudo cargar el almacen predefinido. Se tratara de cargar el almacen alternativo: " + ksType); //$NON-NLS-1$
+			return getAOKeyStoreManager(ksType, aoksLib);
+		}
 	}
 }

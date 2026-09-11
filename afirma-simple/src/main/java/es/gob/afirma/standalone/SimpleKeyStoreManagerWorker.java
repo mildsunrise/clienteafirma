@@ -9,16 +9,17 @@
 
 package es.gob.afirma.standalone;
 
-import java.awt.Component;
-import java.util.logging.Logger;
-
-import javax.swing.SwingWorker;
-
 import es.gob.afirma.keystores.AOKeyStoreManager;
 import es.gob.afirma.keystores.AOKeyStoreManagerException;
 import es.gob.afirma.keystores.KeystoreAlternativeException;
 
+import javax.swing.*;
+import java.awt.*;
+import java.util.logging.Logger;
+
 final class SimpleKeyStoreManagerWorker extends SwingWorker<Void, String> {
+
+    private static final Logger LOGGER = Logger.getLogger("es.gob.afirma");
 
     private final SimpleAfirma simpleAFirma;
     private final Component parent;
@@ -37,7 +38,7 @@ final class SimpleKeyStoreManagerWorker extends SwingWorker<Void, String> {
     @Override
     protected Void doInBackground() throws AOKeyStoreManagerException, KeystoreAlternativeException {
         if (SimpleAfirma.DEBUG) {
-            Logger.getLogger("es.gob.afirma").info("Solicitado establecimiento de KeyStore (DNIe=" + this.dnie + ")"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            LOGGER.info("Solicitado establecimiento de KeyStore (DNIe=" + this.dnie + ")"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         }
 
         try {
@@ -50,14 +51,14 @@ final class SimpleKeyStoreManagerWorker extends SwingWorker<Void, String> {
         	// la version anteriormente cargada
         	this.ksm = null;
         }
+
         return null;
     }
 
     @Override
     protected void done() {
-        if (this.simpleAFirma != null && this.ksm != null) {
+    if (this.simpleAFirma != null && this.ksm != null) {
             this.simpleAFirma.setKeyStoreManager(this.ksm);
         }
     }
-
 }

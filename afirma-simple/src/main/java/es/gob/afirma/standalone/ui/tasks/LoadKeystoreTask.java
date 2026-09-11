@@ -2,8 +2,6 @@ package es.gob.afirma.standalone.ui.tasks;
 
 import java.util.logging.Logger;
 
-import javax.security.auth.callback.PasswordCallback;
-
 import es.gob.afirma.core.misc.Platform;
 import es.gob.afirma.core.prefs.KeyStorePreferencesManager;
 import es.gob.afirma.keystores.AOKeyStore;
@@ -12,7 +10,11 @@ import es.gob.afirma.keystores.AOKeyStoreManagerFactory;
 import es.gob.afirma.standalone.SimpleKeyStoreManager;
 import es.gob.afirma.standalone.configurator.common.PreferencesManager;
 
-public class LoadKeystoreTask extends Thread{
+/**
+ * Hilo para la carga de un almac&eacute;n de claves por defecto en segundo plano. Se omite si el almac&eacute;n es de
+ * tipo PKCS#11 o PKCS#12, ya que este tipo de almacenes requieren la interacci&oacute;n del usuario.
+ */
+public class LoadKeystoreTask extends Thread {
 
 	private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
@@ -59,12 +61,10 @@ public class LoadKeystoreTask extends Thread{
     	LOGGER.info("Iniciando hilo para la carga de almacen: " + this.keystore.getName()); //$NON-NLS-1$
 
     	try {
-    		final PasswordCallback pwc = this.keystore.getStorePasswordCallback(null);
-
     		this.keyStoreManager = AOKeyStoreManagerFactory.getAOKeyStoreManager(this.keystore, // Store
 					null, // Lib
 					null, // Description
-					pwc, // PasswordCallback
+					null, // PasswordCallback
 					null // Parent
 					);
     	} catch (final Exception e) {
