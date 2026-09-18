@@ -410,7 +410,6 @@ final class PdfVisibleAreasUtils {
 	 * @param appearance Apariencia de la firma PDF. De esta se obtiene el texto de la firma y su
 	 * fuente de letra.
 	 * @param rubricRect Rect&aacute;ngulo de firma.
-	 * @param pageRotation Rotaci&oacute;n de la propia p&aacute;gina.
 	 * @param degrees Grados de rotaci&oacute;n del campo de firma.
 	 * @param rubricImg imagen a estampar
 	 * @throws DocumentException Si hay problemas tratando el PDF.

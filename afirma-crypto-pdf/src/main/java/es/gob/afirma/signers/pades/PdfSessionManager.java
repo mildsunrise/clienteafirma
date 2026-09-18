@@ -185,19 +185,11 @@ public final class PdfSessionManager {
 			pdfVersion = UNDEFINED;
 		}
 
-		// **************************************************************
-		// ***** Comprobaciones y parametros necesarios para PDF-A1 *****
 		final byte[] xmpBytes = pdfReader.getMetadata();
-		final boolean pdfA1 = PdfUtil.isPdfA1(xmpBytes);
-		if (pdfA1) {
-			LOGGER.info("Detectado PDF-A1, no se comprimira el PDF"); //$NON-NLS-1$
+		final boolean pdfA = PdfUtil.isPdfA(xmpBytes);
+		if (pdfA) {
+			LOGGER.info("El documento a firmar es PDF-A"); //$NON-NLS-1$
 		}
-
-		// *** Fin comprobaciones y parametros necesarios para PDF-A1 ***
-		// **************************************************************
-
-		// *****************************
-		// **** Texto firma visible ****
 
 		String layer4Text = null;
 		String layer2Text = null;
@@ -293,7 +285,7 @@ public final class PdfSessionManager {
 					layer2FontSize,
 					layer2FontStyle,
 					layer2FontColor,
-					pdfA1
+					pdfA
 					);
 		}
 		// ** Fin texto firma visible **
@@ -380,6 +372,10 @@ public final class PdfSessionManager {
 			throw new PdfIsPasswordProtectedException("El PDF esta protegido contra modificaciones", e); //$NON-NLS-1$
 		}
 
+		if (pdfA && PdfVisibleAreasUtils.isVisibleSignature(extraParams)) {
+			PdfAColorSpaces.configure(stp.getWriter(), pdfReader);
+		}
+
 		// Obtenemos la posicion de la firma si se ha indicado
 		List<Integer> pages = null;
 		final Rectangle signaturePositionOnPage = PdfVisibleAreasUtils.getSignaturePositionOnPage(extraParams);
@@ -411,7 +407,7 @@ public final class PdfSessionManager {
 
 		// La compresion solo para versiones superiores a la 4
 		// Hacemos la comprobacion a "false", porque es el valor que deshabilita esta opcion
-		if (pdfVersion > PDF_MIN_VERSION && !pdfA1
+		if (pdfVersion > PDF_MIN_VERSION && !pdfA
 				&& !"false".equalsIgnoreCase(extraParams.getProperty(PdfExtraParams.COMPRESS_PDF))) { //$NON-NLS-1$
 			stp.setFullCompression();
 		}

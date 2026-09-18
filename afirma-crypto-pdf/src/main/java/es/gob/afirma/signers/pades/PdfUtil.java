@@ -11,6 +11,7 @@ package es.gob.afirma.signers.pades;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
@@ -81,32 +82,20 @@ public final class PdfUtil {
 		// No instanciable
 	}
 
-	/** Indica si un PDF es de tipo PDF-A1.
+	/** Indica si en los metadatos XMP se declara cualquier variante de PDF/A.
 	 * @param metadata Metadatos XMP del PDF.
-	 * @return <code>true</code> si el PDF es de tipo PDF-A1,
+	 * @return <code>true</code> si el PDF es de tipo PDF/A,
 	 *         <code>false</code> en caso contrario. */
-	static boolean isPdfA1(final byte[] metadata) {
+	static boolean isPdfA(final byte[] metadata) {
 		if (metadata == null) {
 			return false;
 		}
-		final String rdf = new String(metadata);
-		return rdf.replace("\n", "") //$NON-NLS-1$ //$NON-NLS-2$
-					.replace("\r", "") //$NON-NLS-1$ //$NON-NLS-2$
-					  .replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
-					    .replace(" ", "") //$NON-NLS-1$ //$NON-NLS-2$
-					      .contains("<pdfaid:part>1</pdfaid:part>"); //$NON-NLS-1$
-	}
-
-	static boolean isPdfAx(final byte[] metadata) {
-		if (metadata == null) {
-			return false;
-		}
-		final String rdf = new String(metadata);
-		return rdf.replace("\n", "") //$NON-NLS-1$ //$NON-NLS-2$
-					.replace("\r", "") //$NON-NLS-1$ //$NON-NLS-2$
-					  .replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
-					    .replace(" ", "") //$NON-NLS-1$ //$NON-NLS-2$
-					      .contains("<pdfaid:part>"); //$NON-NLS-1$
+		final String rdf = new String(metadata, StandardCharsets.UTF_8)
+				.replace("\n", "") //$NON-NLS-1$ //$NON-NLS-2$
+				.replace("\r", "") //$NON-NLS-1$ //$NON-NLS-2$
+				.replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+				.replace(" ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		return rdf.contains("<pdfaid:part>") || rdf.contains("pdfaid:part="); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
 	static GregorianCalendar getSignTime(final String stStr) {

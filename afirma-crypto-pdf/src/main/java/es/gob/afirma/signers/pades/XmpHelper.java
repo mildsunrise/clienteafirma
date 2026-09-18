@@ -130,7 +130,7 @@ final class XmpHelper {
 		// Obtenemos la fecha de creacion del documento
 		final String originalCreationDate = getOriginalCreationDateAsW3C(reader);
 
-		if (!PdfUtil.isPdfAx(xmpBytes) || new AOPDFSigner().isSign(inPdf, extraParams)) {
+		if (!PdfUtil.isPdfA(xmpBytes) || new AOPDFSigner().isSign(inPdf, extraParams)) {
 			reader.close();
 			return inPdf;
 		}

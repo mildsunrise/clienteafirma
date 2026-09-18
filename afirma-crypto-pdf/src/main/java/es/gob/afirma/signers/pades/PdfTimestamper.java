@@ -133,6 +133,7 @@ public final class PdfTimestamper {
 
             	// Comprobamos el nivel de certificacion del PDF
                 PdfUtil.checkPdfCertification(pdfReader.getCertificationLevel(), extraParams);
+				final boolean pdfA = PdfUtil.isPdfA(pdfReader.getMetadata());
 
         		// Establecimiento de version PDF
         		int pdfVersion;
@@ -172,6 +173,10 @@ public final class PdfTimestamper {
 					}
 	        		catch (final IOException e) {
 	        			throw new AOException("Error en la composicion del documento firmado", e, PdfErrorCode.Internal.INTERNAL_PADES_SIGNING_ERROR); //$NON-NLS-1$
+					}
+
+					if (pdfA) {
+							PdfAColorSpaces.configure(stp.getWriter(), pdfReader);
 					}
 
 	        		// Aplicamos todos los atributos de firma

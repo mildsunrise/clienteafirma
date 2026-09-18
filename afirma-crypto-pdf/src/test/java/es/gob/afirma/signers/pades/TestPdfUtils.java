@@ -1,13 +1,21 @@
 package es.gob.afirma.signers.pades;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfArray;
+import com.lowagie.text.pdf.PdfDictionary;
+import com.lowagie.text.pdf.PdfName;
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.PdfWriter;
+
 import org.junit.Assert;
 import org.junit.Test;
-
-import es.gob.afirma.signers.pades.PdfUtil;
 
 public class TestPdfUtils {
 
@@ -81,6 +89,50 @@ public class TestPdfUtils {
 		}
 		catch (final Exception e) {
 			// OK
+		}
+	}
+
+	@Test
+	public void testPdfAIdentification() {
+		Assert.assertFalse(PdfUtil.isPdfA(null));
+
+		final byte[] pdfA1Metadata = "<pdfaid:part>1</pdfaid:part>".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+		final byte[] pdfA2Metadata = "<pdfaid:part>2</pdfaid:part>".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+
+		Assert.assertTrue(PdfUtil.isPdfA(pdfA1Metadata));
+		Assert.assertTrue(PdfUtil.isPdfA(pdfA2Metadata));
+	}
+
+	@Test
+	public void testPdfAColorSpacesConfigureCalibratedDefaults() throws Exception {
+		final ByteArrayOutputStream inputData = new ByteArrayOutputStream();
+		final Document inputDocument = new Document();
+		PdfWriter.getInstance(inputDocument, inputData);
+		inputDocument.open();
+		inputDocument.add(new Paragraph("Test")); //$NON-NLS-1$
+		inputDocument.close();
+
+		final PdfReader reader = new PdfReader(inputData.toByteArray());
+		final ByteArrayOutputStream outputData = new ByteArrayOutputStream();
+		final Document outputDocument = new Document();
+		final PdfWriter writer = PdfWriter.getInstance(outputDocument, outputData);
+		try {
+			outputDocument.open();
+			PdfAColorSpaces.configure(writer, reader);
+			outputDocument.add(new Paragraph("Test")); //$NON-NLS-1$
+
+			final PdfDictionary defaultColorspaces = writer.getDefaultColorspace();
+			final PdfArray defaultGray = defaultColorspaces.getAsArray(PdfName.DEFAULTGRAY);
+			final PdfArray defaultRgb = defaultColorspaces.getAsArray(PdfName.DEFAULTRGB);
+
+			Assert.assertNotNull(defaultGray);
+			Assert.assertEquals(PdfName.CALGRAY, defaultGray.getAsName(0));
+			Assert.assertNotNull(defaultRgb);
+			Assert.assertEquals(PdfName.CALRGB, defaultRgb.getAsName(0));
+		}
+		finally {
+			outputDocument.close();
+			reader.close();
 		}
 	}
 
