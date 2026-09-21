@@ -9,55 +9,56 @@
 
 package es.gob.afirma.standalone;
 
-import java.awt.Component;
-import java.io.IOException;
-import java.security.UnrecoverableKeyException;
-import java.util.Map;
-import java.util.logging.Logger;
-
-import javax.swing.JOptionPane;
-
 import es.gob.afirma.core.AOCancelledOperationException;
 import es.gob.afirma.core.misc.Platform;
 import es.gob.afirma.core.misc.Platform.OS;
 import es.gob.afirma.core.prefs.KeyStorePreferencesManager;
 import es.gob.afirma.core.ui.AOUIFactory;
-import es.gob.afirma.keystores.AOKeyStore;
-import es.gob.afirma.keystores.AOKeyStoreManager;
-import es.gob.afirma.keystores.AOKeyStoreManagerException;
-import es.gob.afirma.keystores.AOKeyStoreManagerFactory;
-import es.gob.afirma.keystores.KeyStoreErrorCode;
-import es.gob.afirma.keystores.KeystoreAlternativeException;
-import es.gob.afirma.keystores.SmartCardLockedException;
+import es.gob.afirma.keystores.*;
 import es.gob.afirma.keystores.mozilla.MozillaKeyStoreUtilities;
 import es.gob.afirma.standalone.configurator.common.PreferencesManager;
 
-/** Gestor simple de <code>KeyStores</code>. Obtiene o un <code>KeyStore</code> de DNIe
- * v&iacute;a controlador 100% Java o el <code>KeyStore</code> por defecto del sistema operativo.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
+import java.security.UnrecoverableKeyException;
+import java.util.Map;
+import java.util.logging.Logger;
+
+/**
+ * Gestor simple de almac&eacute;n. Obtiene o un almac&eacute;n de DNIe
+ * v&iacute;a controlador 100% Java o el almac&eacute;n por defecto del sistema operativo.
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s.
+ */
 public final class SimpleKeyStoreManager {
 
 	private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
+	/**
+	 * Propiedad del sistema con la que se indica que debe usarse el PKCS#11 del DNIe en lugar del CSP/MiniDriver
+	 * de Windows. Esta propiedad no deber&iacute;a usarse cuando se encuentre JMulticard activado, ya que lo
+	 * pedir&iacute;a simultaneamente.
+	 */
+	private static final String SYSTEM_PROPERTY_ENABLED_PKCS11_DNIE = "dnie.pkcs11.enabled"; //$NON-NLS-1$
+
     private SimpleKeyStoreManager() { /* No permitimos la instanciacion */ }
 
-    /** Obtiene un <code>KeyStore</code>.
-     * @param dnie <code>true</code> si desea obtenerse un <code>KeyStore</code> para DNIe, <code>false</code> si desea obtenerse
-     *        el <code>KeyStore</code> por defecto del sistema operativo.
+    /** Obtiene un almac&eacute;n.
+     * @param useDnieJavaController {@code true} si desea obtenerse un almac&eacute;n para DNIe, {@code false} si desea
+	 *             obtenerse el por defecto del sistema operativo.
      * @param forced Si {@code true}, es obligatorio el uso del DNIe en caso de solicitarlo y no se
      * deber&aacute; cargar un almacen por defecto incluso si el usuario no lo proporciona.
      * @param parent Componente padre para la modalidad.
-     * @return <code>KeyStore</code> apropiado.
-     * @throws AOKeyStoreManagerException Si ocurre cualquier problema durante la obtenci&oacute;n del <code>KeyStore</code>.
+     * @return almac&eacute;n apropiado.
+     * @throws AOKeyStoreManagerException Si ocurre cualquier problema durante la obtenci&oacute;n del almac&eacute;n.
      * @throws NoDnieFoundException Si se obliga al uso de DNIe pero este no se proporciona.
-     * @throws KeystoreAlternativeException
+     * @throws KeystoreAlternativeException Si falla la carga del almac&eacute;n, pero se propone un almac&eacute;n alternativo.
      */
-    static AOKeyStoreManager getKeyStore(final boolean dnie, final boolean forced, final Component parent)
+    static AOKeyStoreManager getKeyStore(final boolean useDnieJavaController, final boolean forced, final Component parent)
     		throws AOKeyStoreManagerException, NoDnieFoundException, KeystoreAlternativeException {
 
-    	// -- Se ha habilitado el uso de DNIe --
-
-        if (dnie) {
+    	// Si se ha seleccionado el uso de DNIe, lo usaremos a traves de JMulticard
+        if (useDnieJavaController) {
 
             JMulticardUtilities.configureJMulticard(true);
 
@@ -110,7 +111,7 @@ public final class SimpleKeyStoreManager {
                     		}
                     		break;
 
-            		case "es.gob.jmulticard.card.dnie.BurnedDnieCardException": //$NON-NLS-1$
+            		case "es.gob.jmulticard.card.useDnieJavaController.BurnedDnieCardException": //$NON-NLS-1$
 	            		AOUIFactory.showErrorMessage(
             				SimpleAfirmaMessages.getString("SimpleKeyStoreManager.5"), //$NON-NLS-1$
             				SimpleAfirmaMessages.getString("SimpleKeyStoreManager.6"), //$NON-NLS-1$
@@ -137,24 +138,31 @@ public final class SimpleKeyStoreManager {
             }
         }
 
-        // El por defecto
+        // Aplicamos el comportamiento por defecto, si no se seleccionó el uso de DNIe o si no se pudo cargar
 
-        // -- Comportamiento por defecto --
-
-        // Configuramos el uso de JMulticard segun lo establecido en el dialogo de preferencias
+        // A pesar de no usar JMulticard para cargar el almacen principal, habilitamos o no su uso segun lo establecido
+		// en las preferencias de la aplicacion
         final boolean enableJMulticard = PreferencesManager.getBoolean(
         		PreferencesManager.PREFERENCE_GENERAL_ENABLED_JMULTICARD);
 
         JMulticardUtilities.configureJMulticard(enableJMulticard);
+
+		// En el caso de Windows, cuando no se encuentre habilitado JMulticard, indicamos al almacen
+		// mediante variable de sistema que puede usar el PKCS#11 del DNIe para usarlo
+		if (!enableJMulticard && Platform.getOS() == OS.WINDOWS) {
+			System.setProperty(SYSTEM_PROPERTY_ENABLED_PKCS11_DNIE, Boolean.TRUE.toString());
+		}
 
         // Identificamos el almacen por defecto
         final AOKeyStore aoks = getDefaultKeyStoreType();
 
         LOGGER.info("Cargando almacen por defecto: " + aoks.getName()); //$NON-NLS-1$
 
+		AOKeyStoreManager ksm = null;
+
         // Cargamos el almacen
         try {
-			return getKeyStoreManager(
+			ksm = getKeyStoreManager(
 				aoks,
 				parent
 			);
@@ -167,10 +175,11 @@ public final class SimpleKeyStoreManager {
 						SimpleAfirmaMessages.getString("SimpleAfirma.7"), //$NON-NLS-1$
 						JOptionPane.ERROR_MESSAGE
 					);
-				final boolean stopOperation = false;
-				while (!stopOperation) {
+
+				// Obtenemos un almacen, reintentando hasta que se consiga o falle definitivamente la operacion
+				while (ksm == null) {
 					try {
-						return getKeyStoreManager(
+						ksm = getKeyStoreManager(
 							aoks,
 							parent
 						);
@@ -181,7 +190,7 @@ public final class SimpleKeyStoreManager {
 								SimpleAfirmaMessages.getString("SimpleAfirma.48"), //$NON-NLS-1$
 								JOptionPane.WARNING_MESSAGE
 						);
-						return loadSystemAOKSManager(parent);
+						ksm = loadSystemAOKSManager(parent);
 					} catch (final IOException ioe2) {
 						if (ioe.getCause() != null && ioe.getCause().getCause() != null
 								&& ioe.getCause().getCause() instanceof UnrecoverableKeyException) {
@@ -191,7 +200,6 @@ public final class SimpleKeyStoreManager {
 									SimpleAfirmaMessages.getString("SimpleAfirma.7"), //$NON-NLS-1$
 									JOptionPane.ERROR_MESSAGE
 							);
-							continue;
 						}
 					} catch (final Exception e) {
 			        	AOUIFactory.showErrorMessage(
@@ -200,18 +208,20 @@ public final class SimpleKeyStoreManager {
 			    				JOptionPane.ERROR_MESSAGE,
 			    				e
 			    			);
-			        	return loadSystemAOKSManager(parent);
+			        	ksm = loadSystemAOKSManager(parent);
 					}
 				}
 			}
-			AOUIFactory.showErrorMessage(
-					SimpleAfirmaMessages.getString("SimpleKeyStoreManager.11", aoks.getName()), //$NON-NLS-1$
-					SimpleAfirmaMessages.getString("SimpleAfirma.7"), //$NON-NLS-1$
-					JOptionPane.ERROR_MESSAGE,
-					ioe
-			);
+			if (ksm == null) {
+				AOUIFactory.showErrorMessage(
+						SimpleAfirmaMessages.getString("SimpleKeyStoreManager.11", aoks.getName()), //$NON-NLS-1$
+						SimpleAfirmaMessages.getString("SimpleAfirma.7"), //$NON-NLS-1$
+						JOptionPane.ERROR_MESSAGE,
+						ioe
+				);
 
-			return loadSystemAOKSManager(parent);
+				ksm = loadSystemAOKSManager(parent);
+			}
 
 		} catch (final AOCancelledOperationException aoce) {
 			AOUIFactory.showMessageDialog(
@@ -220,7 +230,7 @@ public final class SimpleKeyStoreManager {
 					SimpleAfirmaMessages.getString("SimpleAfirma.48"), //$NON-NLS-1$
 					JOptionPane.WARNING_MESSAGE
 			);
-			return loadSystemAOKSManager(parent);
+			ksm = loadSystemAOKSManager(parent);
 		} catch (final Exception e) {
         	AOUIFactory.showErrorMessage(
         		SimpleAfirmaMessages.getString("SimpleKeyStoreManager.11", aoks.getName()), //$NON-NLS-1$
@@ -229,9 +239,10 @@ public final class SimpleKeyStoreManager {
 				e
 			);
 
-        	return loadSystemAOKSManager(parent);
-
+        	ksm = loadSystemAOKSManager(parent);
 		}
+
+		return ksm;
     }
 
     private static AOKeyStoreManager getKeyStoreManager(final AOKeyStore aoks, final Component parent) throws IOException, KeystoreAlternativeException {
@@ -244,27 +255,27 @@ public final class SimpleKeyStoreManager {
     		lib,
     		null,
     		aoks.getStorePasswordCallback(parent),
-    		parent
+    		parent,
+			false
 		);
     }
 
-    /** Indica si est&aacute; disponible el almac&eacute;n de claves de Mozilla Firefox.
-     * @return <code>true</code> si est&aacute; disponible el almac&eacute;n de claves de Mozilla Firefox,
-     *         <code>false</code> en caso contrario. */
-    public static boolean isFirefoxAvailable() {
-		final String mozProfileDir;
-		final String nssLibDir;
+	/**
+	 * Indica si existen perfiles de mozilla disponibles.
+	 * @return <code>true</code> si se ha encontrado un fichero de perfiles de Mozilla Firefox,
+	 *         <code>false</code> en caso contrario. */
+	public static boolean existFirefoxProfiles() {
+		final String mozProfilesInitPath;
 		try {
-			mozProfileDir = MozillaKeyStoreUtilities.getMozillaUserProfileDirectory();
-			nssLibDir = MozillaKeyStoreUtilities.getSystemNSSLibDir();
+			mozProfilesInitPath = MozillaKeyStoreUtilities.getProfilesIniPath();
 		}
 		catch(final Exception e) {
-			LOGGER.warning("No se ha podido obtener el directorio de NSS del usuario: " + e); //$NON-NLS-1$
+			LOGGER.warning("No se ha podido obtener el fichero de perfiles de Mozilla: " + e); //$NON-NLS-1$
 			return false;
 		}
 
-		return mozProfileDir != null && nssLibDir != null;
-    }
+		return mozProfilesInitPath != null;
+	}
 
     /**
      * Recupera el repositorio con el nombre indicado. Si no existe un <code>KeyStore</code> con
@@ -289,16 +300,12 @@ public final class SimpleKeyStoreManager {
     		return null;
     	}
 
-    	// Comprobamos si es un almacen que conozcamos y lo devolvemos. En caso de ser el de Mozilla,
-    	// si la operacion se ejecuta desde el navegador web, usamos la version del almacen que agrega
-    	// los certificados del sistema
+    	// Comprobamos si es un almacen que conozcamos y lo devolvemos. En caso de ejecutarse la operacion desde el
+		// navegador ser el de Mozilla y el sistema operativo ser Windows o MacOS, devolvemos el almacen de Mozilla que
+		// agrega los certificados del sistema
     	for (final AOKeyStore tempKs : AOKeyStore.values()) {
             if (tempKs.getName().equalsIgnoreCase(name.trim())) {
-            	AOKeyStore result = tempKs;
-            	if (invokedFromBrowser && tempKs == AOKeyStore.MOZ_UNI) {
-            		result = AOKeyStore.MOZ_UNI_WITH_OS;
-            	}
-            	return result;
+            	return adjustKeyStoreByEnvironment(tempKs, invokedFromBrowser);
             }
         }
 
@@ -313,18 +320,30 @@ public final class SimpleKeyStoreManager {
 		}
 
         try {
-        	AOKeyStore result = AOKeyStore.valueOf(name);
-        	if (invokedFromBrowser && result == AOKeyStore.MOZ_UNI) {
-        		result = AOKeyStore.MOZ_UNI_WITH_OS;
-        	}
-        	return result;
+        	return adjustKeyStoreByEnvironment(AOKeyStore.valueOf(name), invokedFromBrowser);
         }
         catch(final Exception e) {
         	Logger.getLogger("es.gob.afirma").warning("Almacen de claves no reconocido (" + name + "): " + e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         }
+
         return null;
     }
 
+	/**
+	 * Modifica el keystore configurado a uno m&aacute;s apropiado para el entorno de ejecuci&oacute;n si se considera
+	 * necesario.
+	 * @param keyStore Almac&eacute;n configurado.
+	 * @param invokedFromBrowser Indica si la operaci&oacute;n se inici&oacute; desde un navegador web.
+	 * @return Almac&eacute;n de claves ajustado al entorno de ejecuci&oacute;n, que puede ser el mismo que se indic&oacute;.
+	 */
+	private static AOKeyStore adjustKeyStoreByEnvironment(final AOKeyStore keyStore, boolean invokedFromBrowser) {
+		AOKeyStore result = keyStore;
+		if (invokedFromBrowser && keyStore == AOKeyStore.MOZ_UNI
+				&& (Platform.getOS() == OS.WINDOWS || Platform.getOS() == OS.MACOSX)) {
+			result = AOKeyStore.MOZ_UNI_WITH_OS;
+		}
+		return result;
+	}
 
     /** Obtiene el almac&eacute;n de claves por defecto de la aplicaci&oacute;n.
      * @return Almac&eacute;n de claves por defecto de la aplicaci&oacute;n. */
@@ -350,7 +369,7 @@ public final class SimpleKeyStoreManager {
     			final OS os = Platform.getOS();
     			// Si desinstalan Firefox que no se quede una seleccion mala
     			if (AOKeyStore.MOZ_UNI.equals(ks)) {
-    				if (isFirefoxAvailable()) {
+    				if (existFirefoxProfiles()) {
     					return ks;
     				}
 					return AOKeyStore.getDefaultKeyStoreTypeByOs(os);
@@ -376,8 +395,8 @@ public final class SimpleKeyStoreManager {
 
     /**
      * Obtiene el &uacute;ltimo almac&eacute;n de claves seleccionado por el usuario. En caso de que no est&eacute;
-     * definido o no sea un almac&eacute;n v&aacute;lido, se haya seleccionado.
-     * @return Almac&eacute;n de claves seleccionado por el usuario.
+     * definido o no sea un almac&eacute;n v&aacute;lido, se devolver&aacute; {@code null}.
+     * @return Almac&eacute;n de claves seleccionado por el usuario o {@code null} si no se seleccion&oacute; uno v&aacute;lido.
      */
     public static AOKeyStore getLastSelectedKeystore() {
     	final String savedStoreName = KeyStorePreferencesManager.getLastSelectedKeystore();

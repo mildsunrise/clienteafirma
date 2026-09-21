@@ -9,16 +9,14 @@
 
 package es.gob.afirma.ui.core.jse.certificateselection;
 
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Desktop;
+import es.gob.afirma.core.keystores.NameCertificateBean;
+import es.gob.afirma.core.misc.LoggerUtil;
+
+import java.awt.*;
 import java.net.URI;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.logging.Logger;
-
-import es.gob.afirma.core.keystores.NameCertificateBean;
-import es.gob.afirma.core.misc.LoggerUtil;
 
 final class UtilActions {
 
@@ -72,7 +70,7 @@ final class UtilActions {
 			parent.setCursor(new Cursor(Cursor.WAIT_CURSOR));
 		}
 
-		selectionDialog.refreshKeystore();
+		selectionDialog.refreshKeystore(parent);
 
 		if (parent != null) {
 			parent.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
@@ -92,14 +90,14 @@ final class UtilActions {
 		}
 	}
 
-	static void doChangeKeyStore(final int keyStoreType, final CertificateSelectionDialog selectionDialog, final Component parent , final String ksName, final String ksLibPath) {
+	static void doChangeKeyStore(final es.gob.afirma.core.keystores.KeyStoreType ksType, final CertificateSelectionDialog selectionDialog, final Component parent , final String ksName, final String ksLibPath) {
 		if (parent != null) {
 			parent.setCursor(new Cursor(Cursor.WAIT_CURSOR));
 		}
 
 		LOGGER.info("Se cambia al almacen de certificados " + LoggerUtil.getTrimStr(ksName)); //$NON-NLS-1$
 
-		selectionDialog.changeKeyStore(keyStoreType, ksName, ksLibPath);
+		selectionDialog.changeKeyStore(ksType, ksName, ksLibPath);
 
 		if (parent != null) {
 			parent.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));

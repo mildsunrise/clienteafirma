@@ -190,11 +190,13 @@ public final class PdfSessionManager {
 		if (pdfA) {
 			LOGGER.info("El documento a firmar es PDF-A"); //$NON-NLS-1$
 		}
+		final boolean visibleSignature = PdfVisibleAreasUtils.isVisibleSignature(extraParams);
+
 
 		String layer4Text = null;
 		String layer2Text = null;
 		Font layer2Font = null;
-		if (PdfVisibleAreasUtils.isVisibleSignature(extraParams)) {
+		if (visibleSignature) {
 			// Por defecto, siempre se ofuscara la informacion del certificado, salvo que usemos un certificado
 			// de seudonimo
 			boolean obfuscate = true;
@@ -372,7 +374,7 @@ public final class PdfSessionManager {
 			throw new PdfIsPasswordProtectedException("El PDF esta protegido contra modificaciones", e); //$NON-NLS-1$
 		}
 
-		if (pdfA && PdfVisibleAreasUtils.isVisibleSignature(extraParams)) {
+		if (pdfA && visibleSignature) {
 			PdfAColorSpaces.configure(stp.getWriter(), pdfReader);
 		}
 
@@ -473,7 +475,7 @@ public final class PdfSessionManager {
 		// ** Texto en las capas ****
 		// **************************
 
-		if (PdfVisibleAreasUtils.isVisibleSignature(extraParams)) {
+		if (visibleSignature) {
 
 			// Capa 2
 			if (layer2Text != null) {
