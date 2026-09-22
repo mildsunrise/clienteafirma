@@ -17,7 +17,7 @@ import javax.swing.JComponent;
 
 import es.gob.afirma.standalone.SimpleAfirmaMessages;
 
-enum FileType {
+public enum FileType {
 
 	PDF(
 		"icon_pdf_large.png", //$NON-NLS-1$

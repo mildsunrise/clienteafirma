@@ -98,19 +98,12 @@ Function createConfigPage
   
   ${NSD_CreateCheckbox} 0 17u 100% 10u $(CREATE_SHORTCUT)
   Pop $Shorcut_Integration_Checkbox
-
-${NSD_CreateCheckbox} 0 34u 100% 10u $(CONF_FIREFOX_CERT)
-  Pop $Firefox_Integration_Checkbox
-  
   ; Restablecemos el valor por si hubiese cambio de pantalla
   ${If} $StartMenu_Integration_Checkbox_State == ${BST_CHECKED}
     ${NSD_Check} $StartMenu_Integration_Checkbox
   ${EndIf}
   ${If} $Shorcut_Integration_Checkbox_State == ${BST_CHECKED}
     ${NSD_Check} $Shorcut_Integration_Checkbox
-  ${EndIf}
-  ${If} $Firefox_Integration_Checkbox_State == ${BST_CHECKED}
-    ${NSD_Check} $Firefox_Integration_Checkbox
   ${EndIf}
   
   ; Establecemos el mismo comportamiento al pulsar Atras en la pagina que al continuar
@@ -124,7 +117,6 @@ Function leaveConfigPage
 
 	${NSD_GetState} $StartMenu_Integration_Checkbox $StartMenu_Integration_Checkbox_State
 	${NSD_GetState} $Shorcut_Integration_Checkbox $Shorcut_Integration_Checkbox_State
-	${NSD_GetState} $Firefox_Integration_Checkbox $Firefox_Integration_Checkbox_State
 
 FunctionEnd
 
@@ -329,7 +321,7 @@ Section "Autofirma" sPrograma
 	;CascadeAfirma.reg
 	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign" "" $(SIGN_WITH_AUTOFIRMA)
 	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign" "Icon" "$INSTDIR\$PATH\Autofirma.exe"
-	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign\command" "" '$INSTDIR\$PATH\Autofirma.exe sign -gui -i "%1"'
+	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign\command" "" '$INSTDIR\$PATH\Autofirma.exe sign -gui -useconfig -i "%1"'
 
 	;Verify
 	; .csig
@@ -356,12 +348,6 @@ Section "Autofirma" sPrograma
 		Delete "$INSTDIR\$PATH\Autofirma_ROOT.cer"
 	IfFileExists "$INSTDIR\$PATH\autofirma.pfx" 0 +2
 		Delete "$INSTDIR\$PATH\autofirma.pfx"
-
-	; Configuramos la aplicacion (generacion de certificados) e importacion en Firefox
-	StrCpy $R0 ""
-	${If} $Firefox_Integration_Checkbox_State == ${BST_CHECKED}
-		StrCpy $R0 "-firefox_roots"
-	${Endif}
 
 	StrCpy $R1 ""
 	${If} $LANGUAGE == 3082
@@ -1352,17 +1338,17 @@ Function RemoveOldVersions
 
 	End:
 	
-    Push $7
-	Push $6
-    Push $5
-    Push $4
-    Push $3
-    Push $2
-    Push $1
-    Push $0
-	Push $R2
-    Push $R1
-	Push $R0
+    Pop $7
+	Pop $6
+    Pop $5
+    Pop $4
+    Pop $3
+    Pop $2
+    Pop $1
+    Pop $0
+	Pop $R2
+    Pop $R1
+	Pop $R0
 FunctionEnd
 
 ; Funcion para copiar los valores de una clave de registro a otra.

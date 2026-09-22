@@ -274,7 +274,7 @@ Section "Autofirma" sPrograma
 	;CascadeAfirma.reg
 	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign" "" $SIGN_STRING
 	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign" "Icon" "$INSTDIR\$PATH\Autofirma.exe"
-	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign\command" "" '$INSTDIR\$PATH\Autofirma.exe sign -gui -i "%1"'
+	WriteRegStr HKEY_CLASSES_ROOT "*\shell\afirma.sign\command" "" '$INSTDIR\$PATH\Autofirma.exe sign -gui -useconfig -i "%1"'
 	
 	${If} $DEFAULT_LANGUAGE == "es_ES"
         StrCpy $BINARY_STRING "Firma binaria CMS/CAdES"

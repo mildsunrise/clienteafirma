@@ -203,9 +203,9 @@ public final class PreferencesManager {
 	/** Formato de firma por defecto para documentos PDF.
 	 * Esta preferencia debe tener uno de estos valores:
 	 * <ul>
-	 *  <li>PAdes</li>
-	 *  <li>CAdes</li>
-	 *  <li>XAdes</li>
+	 *  <li>PAdES</li>
+	 *  <li>CAdES</li>
+	 *  <li>XAdES</li>
 	 * </ul> */
 	public static final String PREFERENCE_GENERAL_DEFAULT_FORMAT_PDF = "defaultSignatureFormatPdf"; //$NON-NLS-1$
 
@@ -1293,4 +1293,3 @@ public final class PreferencesManager {
 		}
 	}
 }
-

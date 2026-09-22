@@ -36,6 +36,7 @@ final class CommandLineParameters {
 	private static final String PARAM_HASH_FORMAT = "-hformat"; //$NON-NLS-1$
 	private static final String PARAM_HASH_ALGO   = "-halgorithm"; //$NON-NLS-1$
 	private static final String PARAM_RECURSIVE   = "-r"; //$NON-NLS-1$
+	private static final String PARAM_USE_CONFIG  = "-useconfig"; //$NON-NLS-1$
 
 	public static final String PARAM_XML         = "-xml"; //$NON-NLS-1$
 
@@ -82,6 +83,7 @@ final class CommandLineParameters {
 	private String hashAlgorithm = null;
 	private String extraParams = null;
 	private String massiveOp = null;
+	private boolean useEstablishedConfig = false;
 	private boolean xml = false;
 	private boolean gui = false;
 	private boolean certgui = false;
@@ -135,8 +137,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.128"), this.gui); //$NON-NLS-1$
 				}
-				this.preUrlParam = params[i+1];
-				i++;
+				this.preUrlParam = params[++i];
 			}
 			else if (PARAM_POSTURL.equals(params[i])) {
 				if (this.postUrlParam != null) {
@@ -145,8 +146,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.129"), this.gui); //$NON-NLS-1$
 				}
-				this.postUrlParam = params[i+1];
-				i++;
+				this.postUrlParam = params[++i];
 			}
 			else if (PARAM_GUI.equals(params[i])) {
 				this.gui = true;
@@ -164,8 +164,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.130"), this.gui); //$NON-NLS-1$
 				}
-				this.store = params[i+1];
-				i++;
+				this.store = params[++i];
 			}
 			else if (PARAM_OP.equals(params[i])) {
 				if (this.massiveOp != null) {
@@ -174,8 +173,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.131"), this.gui); //$NON-NLS-1$
 				}
-				this.massiveOp = params[i+1];
-				i++;
+				this.massiveOp = params[++i];
 			}
 			else if (PARAM_ALGO.equals(params[i])) {
 				if (this.algorithm != null) {
@@ -184,8 +182,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.132"), this.gui); //$NON-NLS-1$
 				}
-				this.algorithm = params[i+1];
-				i++;
+				this.algorithm = params[++i];
 			}
 			else if (PARAM_HASH_ALGO.equals(params[i])) {
 				if (this.hashAlgorithm != null) {
@@ -194,8 +191,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.133"), this.gui); //$NON-NLS-1$
 				}
-				this.hashAlgorithm = params[i+1];
-				i++;
+				this.hashAlgorithm = params[++i];
 			}
 			else if (PARAM_CONFIG.equals(params[i])) {
 				if (this.extraParams != null) {
@@ -204,8 +200,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.134"), this.gui); //$NON-NLS-1$
 				}
-				this.extraParams = params[i+1];
-				i++;
+				this.extraParams = params[++i];
 			}
 			else if (PARAM_PASSWD.equals(params[i])) {
 				if (this.password != null) {
@@ -214,8 +209,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.135"), this.gui); //$NON-NLS-1$
 				}
-				this.password = params[i+1];
-				i++;
+				this.password = params[++i];
 			}
 			else if (PARAM_ALIAS.equals(params[i])) {
 				if (this.alias != null) {
@@ -227,8 +221,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.136"), this.gui); //$NON-NLS-1$
 				}
-				this.alias = params[i+1];
-				i++;
+				this.alias = params[++i];
 			}
 			else if (PARAM_FILTER.equals(params[i])) {
 				if (this.filter != null) {
@@ -240,8 +233,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.137"), this.gui); //$NON-NLS-1$
 				}
-				this.filter = params[i+1];
-				i++;
+				this.filter = params[++i];
 			}
 			else if (PARAM_INPUT.equals(params[i])) {
 				if (this.inputFileParam != null) {
@@ -250,8 +242,10 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.74"), this.gui); //$NON-NLS-1$
 				}
-				this.inputFileParam = params[i + 1];
-				i++;
+				this.inputFileParam = params[++i];
+			}
+			else if (PARAM_USE_CONFIG.equals(params[i])) {
+				this.useEstablishedConfig = true;
 			}
 			else if (PARAM_FORMAT.equals(params[i])) {
 				if (this.formatParam != null) {
@@ -260,8 +254,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.138"), this.gui); //$NON-NLS-1$
 				}
-				this.formatParam = params[i+1];
-				i++;
+				this.formatParam = params[++i];
 			}
 			else if (PARAM_HASH_FORMAT.equals(params[i])) {
 				if (this.hashFormatParam != null) {
@@ -270,8 +263,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.139"), this.gui); //$NON-NLS-1$
 				}
-				this.hashFormatParam = params[i + 1];
-				i++;
+				this.hashFormatParam = params[++i];
 			}
 			else if (PARAM_OUTPUT.equals(params[i])) {
 				if (this.outputFileParam != null) {
@@ -280,8 +272,7 @@ final class CommandLineParameters {
 				if (i >= params.length - 1) {
 					throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.75"), this.gui); //$NON-NLS-1$
 				}
-				this.outputFileParam = params[i + 1];
-				i++;
+				this.outputFileParam = params[++i];
 			}
 			else {
 				throw new CommandLineException(CommandLineMessages.getString("CommandLineLauncher.25", params[i]), this.gui); //$NON-NLS-1$
@@ -682,5 +673,9 @@ final class CommandLineParameters {
 		.append("  ").append(PARAM_XML).append("\t\t\t (").append(CommandLineMessages.getString("CommandLineLauncher.18")).append(")"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
 		return sb.toString();
+	}
+
+	public boolean isUseEstablishedConfig() {
+		return this.useEstablishedConfig;
 	}
 }

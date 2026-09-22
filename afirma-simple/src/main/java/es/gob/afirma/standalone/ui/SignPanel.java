@@ -29,16 +29,10 @@ import java.awt.Insets;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.security.KeyStore.PrivateKeyEntry;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -86,6 +80,7 @@ import es.gob.afirma.standalone.LookAndFeelManager;
 import es.gob.afirma.standalone.SimpleAfirma;
 import es.gob.afirma.standalone.SimpleAfirmaMessages;
 import es.gob.afirma.standalone.configurator.common.PreferencesManager;
+import es.gob.afirma.standalone.crypto.ExtraParamsHelper;
 import es.gob.afirma.standalone.plugins.DataProcessAction;
 import es.gob.afirma.standalone.plugins.InputData;
 import es.gob.afirma.standalone.ui.SignOperationConfig.CryptoOperation;
@@ -104,7 +99,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	/** Altura m&iacute;nima que deber&aacute; tener el panel. */
 	private static final int MINIMUM_PANEL_HEIGHT = 520;
 
-    private static String[][] signersTypeRelation = new String[][] {
+    private static final String[][] signersTypeRelation = new String[][] {
     	{"es.gob.afirma.signers.pades.AOPDFSigner", SimpleAfirmaMessages.getString("SignPanel.104")}, //$NON-NLS-1$ //$NON-NLS-2$
     	{"es.gob.afirma.signers.xades.AOFacturaESigner", SimpleAfirmaMessages.getString("SignPanel.105")}, //$NON-NLS-1$ //$NON-NLS-2$
     	{"es.gob.afirma.signers.xades.AOXAdESSigner", SimpleAfirmaMessages.getString("SignPanel.106")}, //$NON-NLS-1$ //$NON-NLS-2$
@@ -112,8 +107,6 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
     	{"es.gob.afirma.signers.odf.AOODFSigner", SimpleAfirmaMessages.getString("SignPanel.108")}, //$NON-NLS-1$ //$NON-NLS-2$
     	{"es.gob.afirma.signers.ooxml.AOOOXMLSigner", SimpleAfirmaMessages.getString("SignPanel.109")} //$NON-NLS-1$ //$NON-NLS-2$
     };
-
-    private UpperPanel upperPanel;
 
     private LowerPanel lowerPanel;
 
@@ -162,10 +155,10 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
         c.fill = GridBagConstraints.BOTH;
 
         // Panel superior con el mensaje de bienvenida y el boton de firma
-        this.upperPanel = new UpperPanel(this);
+        UpperPanel upperPanel = new UpperPanel(this);
         c.weightx = 1.0;
         c.gridy = 0;
-        this.add(this.upperPanel, c);
+        this.add(upperPanel, c);
 
         // Panel inferior con el panel al que arrastrar los ficheros y en el
         // que se muestra su informacion cuando se cargan
@@ -393,9 +386,9 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
     		filters.add(new PseudonymFilter(PseudonymFilter.VALUE_ONLY));
     	}
     	if (filters.size() > 1) {
-    		return Arrays.asList(
-				new MultipleCertificateFilter(filters.toArray(new CertificateFilter[0]))
-			);
+    		return Collections.singletonList(
+                    new MultipleCertificateFilter(filters.toArray(new CertificateFilter[0]))
+            );
     	}
 		else if (filters.size() == 1) {
     		return filters;
@@ -423,7 +416,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
      		for (final File dataFile : dataFiles) {
      			try {
      				if (generalSignConfig != null) {
-     					configs.add(prepareSignConfig(dataFile, generalSignConfig));
+						 configs.add(prepareSignConfig(dataFile, generalSignConfig));
      				}
      				else {
      					configs.add(prepareSignConfig(dataFile));
@@ -459,10 +452,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 
 		 final List<File> resultFiles = new ArrayList<>();
 
-		 final List<File> tempFiles = new ArrayList<>();
-		 for (final File file : fileList) {
-			 tempFiles.add(file);
-		 }
+         final List<File> tempFiles = new ArrayList<>(Arrays.asList(fileList));
 
 		 for (int i = 0; i < tempFiles.size(); i++) {
 			 final File file = tempFiles.get(i);
@@ -483,7 +473,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	 private static SignOperationConfig prepareSignConfig(final File dataFile) throws IOException {
 
 		 final byte[] data;
-		 try (final InputStream fis = new FileInputStream(dataFile)) {
+		 try {
 			 data = Files.readAllBytes(dataFile.toPath());
 		 }
 		 catch(final OutOfMemoryError e) {
@@ -503,7 +493,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	 private static SignOperationConfig prepareSignConfig(final File dataFile, final SignOperationConfig signConfig) throws IOException {
 
 		 final byte[] data;
-		 try (final InputStream fis = new FileInputStream(dataFile)) {
+		 try {
 			 data = Files.readAllBytes(dataFile.toPath());
 		 }
 		 catch(final OutOfMemoryError e) {
@@ -998,13 +988,11 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 
 	    private final JButton signButton;
 
-	    private DropTarget dropTarget = null;
-
-	    LowerPanel(final LoadDataFileListener loadDataListener) {
+        LowerPanel(final LoadDataFileListener loadDataListener) {
 	        super(true);
 	        this.loadDataListener = loadDataListener;
 	        this.signButton = new JButton();
-	        SwingUtilities.invokeLater(() -> this.createUI());
+	        SwingUtilities.invokeLater(this::createUI);
 	    }
 
 	    void createUI() {
@@ -1023,11 +1011,11 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	        panel.setToolTipText(SimpleAfirmaMessages.getString("SignPanel.42")); //$NON-NLS-1$
 	        panel.setFocusable(false);
 
-	       this.dropTarget = new DropTarget(
-	        		panel,
-	        		DnDConstants.ACTION_COPY,
-	        		new DropDataFileListener(this.loadDataListener),
-	        		true);
+            DropTarget dropTarget = new DropTarget(
+                    panel,
+                    DnDConstants.ACTION_COPY,
+                    new DropDataFileListener(this.loadDataListener),
+                    true);
 
 	        this.filePanel = new JScrollPane();
 	        this.filePanel.setBackground(bgColor);
@@ -1052,8 +1040,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	        this.filePanel.getVerticalScrollBar().setUnitIncrement(16);
         	this.filePanel.getHorizontalScrollBar().setUnitIncrement(16);
 
-	        //this.filePanel.setDropTarget(this.dropTarget);
-	        this.filePanel.getViewport().setDropTarget(this.dropTarget);
+	        this.filePanel.getViewport().setDropTarget(dropTarget);
 
 	        this.filePanel.setViewportView(panel);
 
@@ -1067,9 +1054,7 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	        this.signButton.setEnabled(false);
 	        buttonPanel.add(this.signButton);
 	        this.signButton.addActionListener(
-	    		ae -> {
-					SignPanel.this.sign();
-				}
+	    		ae -> SignPanel.this.sign()
 			);
 
 	        // Establecemos la configuracion de color
@@ -1119,16 +1104,4 @@ public final class SignPanel extends JPanel implements LoadDataFileListener, Sig
 	    	return (JPanel) this.filePanel.getViewport().getView();
 	    }
 	}
-
-     /**
-      * Filtro de ficheros que s&oacute;lo admite ficheros (no directorios)
-      * con permisos de lectura.
-      */
-     static class OnlyFileFilter implements FileFilter {
- 		@Override
- 		public boolean accept(final File pathname) {
- 			return pathname.isFile() && pathname.canRead();
- 		}
-
-     }
 }
