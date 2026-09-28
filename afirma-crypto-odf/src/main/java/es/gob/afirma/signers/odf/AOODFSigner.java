@@ -542,7 +542,7 @@ public final class AOODFSigner implements AOSigner {
             return baos.toByteArray();
         }
         catch (final SAXException saxex) {
-            throw new AOFormatFileException("No se ha podido generar una estructura de archivo no valida '" + fullPath + "': " + saxex, ODFErrorCode.Internal.INTERNAL_ODF_SIGNING_ERROR); //$NON-NLS-1$ //$NON-NLS-2$
+            throw new AOFormatFileException("El fichero interno '" + fullPath + "' no tiene estructura valida", saxex, ODFErrorCode.Internal.INTERNAL_ODF_SIGNING_ERROR); //$NON-NLS-1$ //$NON-NLS-2$
         }
         catch (final AOException e) {
             throw e;

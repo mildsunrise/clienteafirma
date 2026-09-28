@@ -261,10 +261,8 @@ public final class XAdESSigner {
 		String nodeToSign = extraParams.getProperty(
 		        XAdESExtraParams.NODE_TOSIGN);
 
-		final boolean avoidEnveloped = nodeToSign == null ?
-			false :
-				Boolean.parseBoolean(extraParams.getProperty(
-					XAdESExtraParams.AVOID_ENVELOPED_TRANSFORM_WHEN_SIGNING_NODE, Boolean.FALSE.toString()));
+		final boolean avoidEnveloped = nodeToSign != null && Boolean.parseBoolean(extraParams.getProperty(
+                XAdESExtraParams.AVOID_ENVELOPED_TRANSFORM_WHEN_SIGNING_NODE, Boolean.FALSE.toString()));
 
 		String format = extraParams.getProperty(
 		        XAdESExtraParams.FORMAT, AOSignConstants.SIGN_FORMAT_XADES_ENVELOPING);

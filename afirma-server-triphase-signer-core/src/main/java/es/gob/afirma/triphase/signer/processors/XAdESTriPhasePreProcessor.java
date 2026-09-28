@@ -28,19 +28,14 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.SAXException;
 
 import es.gob.afirma.core.AOException;
-import es.gob.afirma.core.AOInvalidSignatureFormatException;
 import es.gob.afirma.core.ErrorCode;
 import es.gob.afirma.core.misc.Base64;
 import es.gob.afirma.core.signers.AOSignConstants;
-import es.gob.afirma.core.signers.AOSigner;
 import es.gob.afirma.core.signers.CounterSignTarget;
 import es.gob.afirma.core.signers.Pkcs1Utils;
 import es.gob.afirma.core.signers.TriphaseData;
 import es.gob.afirma.core.signers.TriphaseData.TriSign;
-import es.gob.afirma.signers.xades.AOFacturaESigner;
 import es.gob.afirma.signers.xades.AOMalformedSignatureException;
-import es.gob.afirma.signers.xades.EFacturaAlreadySignedException;
-import es.gob.afirma.signers.xades.InvalidEFacturaDataException;
 import es.gob.afirma.signers.xml.XMLConstants;
 import es.gob.afirma.signers.xml.XMLErrorCode;
 import es.gob.afirma.signvalidation.InvalidSignatureException;
@@ -56,8 +51,6 @@ import es.gob.afirma.triphase.signer.xades.XmlPreSignResult;
 /** Procesador de firmas trif&aacute;sicas XAdES.
  * @author Tom&aacute;s Garc&iacute;a Mer&aacute;s. */
 public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
-
-	private final boolean facturae;
 
 	/** Prefijo para cada prefirma. */
 	private static final String PROPERTY_NAME_PRESIGN = "PRE"; //$NON-NLS-1$
@@ -85,15 +78,6 @@ public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
 	/** Manejador de log. */
 	private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
-	/** Construye un procesador de firmas trif&aacute;sicas XAdES. */
-	public XAdESTriPhasePreProcessor() {
-		this(false);
-	}
-
-	protected XAdESTriPhasePreProcessor(final boolean factura) {
-		this.facturae = factura;
-	}
-
 	@Override
 	public TriphaseData preProcessPreSign(final byte[] data,
 			                              final String algorithm,
@@ -103,21 +87,7 @@ public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
 	                                                                           AOException {
 		LOGGER.info("Prefirma XAdES - Firma - INICIO"); //$NON-NLS-1$
 
-		// Con FacturaE solo podemos firmar facturas
-		final AOSigner facturaESigner = new AOFacturaESigner();
-		if (this.facturae && !facturaESigner.isValidDataFile(data)) {
-			throw new InvalidEFacturaDataException();
-		}
-
-		// Las facturas solo pueden contener una firma
-		if (this.facturae && facturaESigner.isSign(data)) {
-			throw new EFacturaAlreadySignedException();
-		}
-
-		// Si es FacturaE modificamos los parametros adicionales
-		final Properties xParams = this.facturae ? AOFacturaESigner.getFacturaEExtraParams(extraParams) : extraParams;
-
-		final TriphaseData presign = preProcessPre(data, algorithm, cert, xParams, Op.SIGN);
+		final TriphaseData presign = preProcessPre(data, algorithm, cert, extraParams, Op.SIGN);
 
 		LOGGER.info("Prefirma XAdES - Firma - FIN"); //$NON-NLS-1$
 
@@ -176,7 +146,7 @@ public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
 		return presign;
 	}
 
-	private static TriphaseData preProcessPre(final byte[] data,
+	protected static TriphaseData preProcessPre(final byte[] data,
 			                                  final String algorithm,
 			                                  final X509Certificate[] cert,
 			                                  final Properties extraParams,
@@ -312,17 +282,7 @@ public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
 
 		LOGGER.info("Postfirma XAdES - Firma - INICIO"); //$NON-NLS-1$
 
-		// Con FacturaE solo podemos firmar facturas
-		if (this.facturae && !new AOFacturaESigner().isValidDataFile(data)) {
-			throw new AOInvalidSignatureFormatException(
-				"Los datos proporcionados no son una factura electronica compatible" //$NON-NLS-1$
-			);
-		}
-
-		// Si es FacturaE modificamos los parametros adicionales
-		final Properties xParams = this.facturae ? AOFacturaESigner.getFacturaEExtraParams(extraParams) : extraParams;
-
-		final byte[] postsign = preProcessPost(data, algorithm, cert, xParams, Op.SIGN, triphaseData);
+		final byte[] postsign = preProcessPost(data, algorithm, cert, extraParams, Op.SIGN, triphaseData);
 
 		LOGGER.info("Postfirma XAdES - Firma - FIN"); //$NON-NLS-1$
 
@@ -407,7 +367,7 @@ public class XAdESTriPhasePreProcessor implements TriPhasePreProcessor {
 		return postsign;
 	}
 
-	private static byte[] preProcessPost(final byte[] data,
+	protected static byte[] preProcessPost(final byte[] data,
                                          final String algorithm,
                                          final X509Certificate[] cert,
                                          final Properties extraParams,
