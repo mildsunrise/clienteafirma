@@ -220,7 +220,6 @@ final class ProtocolInvocationLauncherBatch {
 				"Se omite el envio por red de los datos resultantes por no haberse proporcionado una URL de destino" //$NON-NLS-1$
 			);
 		}
-
 		return result.toString();
 	}
 
@@ -333,7 +332,7 @@ final class ProtocolInvocationLauncherBatch {
 			LOGGER.info("Operacion cancelada por el usuario: " + LoggerUtil.getTrimStr(e.toString())); //$NON-NLS-1$
 			throw e;
 		}
-		catch (final IllegalArgumentException e) {
+		catch (final IllegalArgumentException | ParameterException e) {
 			LOGGER.log(Level.SEVERE, "Alguno de los parametros de firma del lote es invalido o incompatible", e); //$NON-NLS-1$
 			final ErrorCode errorCode = SimpleErrorCode.Request.INVALID_FORMAT_SIGN_BATCH_PARAM;
 			throw new SocketOperationException(e, errorCode);

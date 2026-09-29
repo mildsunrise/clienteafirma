@@ -21,7 +21,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateFactory;
@@ -63,7 +62,7 @@ public final class SignatureService extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 
-	private static Logger LOGGER = Logger.getLogger(ConfigManager.LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(ConfigManager.LOGGER_NAME);
 
 	private static DocumentManager docManager;
 	private static DocumentCacheManager docCacheManager;
@@ -127,7 +126,7 @@ public final class SignatureService extends HttpServlet {
 	private static final int DEFAULT_PAGES_TO_CHECK_PSA = 10;
 
 	/** Propiedad que indica si la cach&eacute; est&aacute; activada o no. */
-	private static boolean cacheEnabled = false;
+	private static boolean cacheEnabled;
 
 	static {
 
@@ -246,7 +245,7 @@ public final class SignatureService extends HttpServlet {
 
 		// Obtenemos el codigo de operacion
 		try (
-			final PrintWriter out = response.getWriter();
+			final PrintWriter out = response.getWriter()
 		) {
 
 			final String operation = parameters.get(PARAM_NAME_OPERATION);
@@ -259,9 +258,9 @@ public final class SignatureService extends HttpServlet {
 
 			// Obtenemos el codigo de operacion
 			final String subOperation = parameters.get(PARAM_NAME_SUB_OPERATION);
-			if (subOperation == null || !PARAM_VALUE_SUB_OPERATION_SIGN.equalsIgnoreCase(subOperation)
-					&& !PARAM_VALUE_SUB_OPERATION_COSIGN.equalsIgnoreCase(subOperation)
-					&& !PARAM_VALUE_SUB_OPERATION_COUNTERSIGN.equalsIgnoreCase(subOperation)) {
+			if (!PARAM_VALUE_SUB_OPERATION_SIGN.equalsIgnoreCase(subOperation)
+                    && !PARAM_VALUE_SUB_OPERATION_COSIGN.equalsIgnoreCase(subOperation)
+                    && !PARAM_VALUE_SUB_OPERATION_COUNTERSIGN.equalsIgnoreCase(subOperation)) {
 				out.print(ErrorManager.getErrorMessage(ErrorManager.INVALID_SUBOPERATION));
 				out.flush();
 				return;
@@ -390,23 +389,6 @@ public final class SignatureService extends HttpServlet {
 					out.flush();
 					return;
 				}
-
-				// XXX: Si se pide una firma XAdES explicita, se firmara el hash de los datos en
-				// lugar de los propios datos. Hacemos el cambio nada mas recuperarlos. Si se ha
-				// activado la cache, lo que se cachee sera el hash. Esto se deberia eliminar
-				// cuando se abandone el soporte de XAdES explicitas.
-				if (PARAM_VALUE_SUB_OPERATION_SIGN.equalsIgnoreCase(subOperation) && isXadesExplicitConfigurated(format, extraParams)) {
-					LOGGER.warning(
-						"Se ha pedido una firma XAdES explicita, este formato dejara de soportarse en proximas versiones" //$NON-NLS-1$
-					);
-					try {
-						docBytes = MessageDigest.getInstance("SHA1").digest(docBytes); //$NON-NLS-1$
-						extraParams.setProperty("mimeType", "hash/sha1"); //$NON-NLS-1$ //$NON-NLS-2$
-					} catch (final Exception e) {
-						LOGGER.warning("Error al generar la huella digital de los datos para firmar como 'XAdES explicit', " //$NON-NLS-1$
-							+ "se realizara una firma XAdES corriente: " + e); //$NON-NLS-1$
-					}
-				}
 			}
 
 			// Obtenemos el algoritmo de firma
@@ -529,7 +511,7 @@ public final class SignatureService extends HttpServlet {
 				// asocie las prefirmas con el certificado de firma
 				if (ConfigManager.getHMacKey() != null) {
 					try {
-						addVerificationCodes(preRes, signerCertChain[0]);
+						addVerificationCodes(preRes, ConfigManager.getHMacKey().getBytes(CHARSET), signerCertChain[0]);
 					}
 					catch (final Exception e) {
 						LOGGER.log(Level.SEVERE, "Error al generar los codigos de verificacion de las firmas: " + e, e); //$NON-NLS-1$
@@ -572,7 +554,7 @@ public final class SignatureService extends HttpServlet {
 				// esten realizados con ese certificado
 				if (ConfigManager.getHMacKey() != null) {
 					try {
-						checkSignaturesIntegrity(triphaseData, prep, signerCertChain[0]);
+						checkSignaturesIntegrity(triphaseData, ConfigManager.getHMacKey().getBytes(CHARSET), signerCertChain[0]);
 					}
 					catch (final InvalidVerificationCodeException e) {
 						LOGGER.log(Level.SEVERE, "Las prefirmas y/o el certificado obtenido no se corresponden con los generados en la prefirma", e); //$NON-NLS-1$
@@ -689,7 +671,6 @@ public final class SignatureService extends HttpServlet {
         	catch (final IOException e1) {
         		LOGGER.severe("No se pudo enviar un error HTTP 500: " + e1); //$NON-NLS-1$
 			}
-        	return;
         }
 	}
 
@@ -728,6 +709,7 @@ public final class SignatureService extends HttpServlet {
 	 * con el que se podr&aacute; comprobar que la prefirma y el certificado no se han modificado entre
 	 * las operaciones de prefirma y postfirma.
 	 * @param triphaseData Informaci&oacute;n trif&aacute;sica de la operaci&oacute;n.
+	 * @param secretKey Clave secreta utilizada para la generaci&oacute;n del c&oacute;digo de verificaci&oacute;n.
 	 * @param cert Certificado utilizado para crear la prefirma.
 	 * @throws NoSuchAlgorithmException Nunca se deber&iacute;a dar.
 	 * @throws InvalidKeyException Cuando la clave para la generaci&oacute;n del c&oacute;digo de
@@ -735,7 +717,7 @@ public final class SignatureService extends HttpServlet {
 	 * @throws CertificateEncodingException Cuando no se puede codificar el certificado.
 	 * @throws IllegalStateException Nunca se deber&iacute;a dar.
 	 */
-	private static void addVerificationCodes(final TriphaseData triphaseData, final X509Certificate cert)
+	private static void addVerificationCodes(final TriphaseData triphaseData, byte[] secretKey, final X509Certificate cert)
 			throws NoSuchAlgorithmException, InvalidKeyException, CertificateEncodingException,
 			IllegalStateException {
 
@@ -749,7 +731,7 @@ public final class SignatureService extends HttpServlet {
 //		KeySpec spec = new PBEKeySpec(password, salt, 10000, 128);
 //		SecretKey key = factory.generateSecret(spec);
 
-		final SecretKeySpec key = new SecretKeySpec(ConfigManager.getHMacKey().getBytes(CHARSET), HMAC_ALGORITHM);
+		final SecretKeySpec key = new SecretKeySpec(secretKey, HMAC_ALGORITHM);
 		for (final TriSign triSign : triphaseData.getTriSigns()) {
 
 			final String preSign = triSign.getProperty(TRIPHASE_PROP_PRESIGN);
@@ -757,7 +739,7 @@ public final class SignatureService extends HttpServlet {
 			final Mac mac = Mac.getInstance(HMAC_ALGORITHM);
 			mac.init(key);
 			mac.update(preSign.getBytes(CHARSET));
-			mac.update(ConfigManager.getHMacKey().getBytes(CHARSET));
+			mac.update(secretKey);
 			mac.update(cert.getEncoded());
 
 			final byte[] hmac = mac.doFinal();
@@ -789,15 +771,15 @@ public final class SignatureService extends HttpServlet {
 	 * que extraer la prefirma del BASE en lugar de coger la que se pasa como par&aacute;metro (que
 	 * ya podr&iacute;a dejar de pasarse).
 	 * @param triphaseData Informaci&oacute;n de la firma.
-	 * @param prep Procesador que compone el formato de firma.
+	 * @param secretKey Clave secreta utilizada para la verificación del HMAC.
 	 * @param cert Certificado que se declara haber usado en la prefirma.
 	 * @throws InvalidVerificationCodeException Cuando el PKCS#1 de la firma no se generase con el
 	 * certificado indicado o cuando no se pudiese comprobar.
 	 * @throws IOException Cuando falla la decodificaci&oacute;n Base 64 de los datos.
 	 */
-	private static void checkSignaturesIntegrity(final TriphaseData triphaseData, final TriPhasePreProcessor prep, final X509Certificate cert) throws InvalidVerificationCodeException, IOException {
+	private static void checkSignaturesIntegrity(final TriphaseData triphaseData, final byte[] secretKey, final X509Certificate cert) throws InvalidVerificationCodeException, IOException {
 
-		final SecretKeySpec key = new SecretKeySpec(ConfigManager.getHMacKey().getBytes(CHARSET), HMAC_ALGORITHM);
+		final SecretKeySpec key = new SecretKeySpec(secretKey, HMAC_ALGORITHM);
 		for (final TriSign triSign : triphaseData.getTriSigns()) {
 
 			final String verificationHMac = triSign.getProperty(TRIPHASE_PROP_HMAC);
@@ -835,25 +817,5 @@ public final class SignatureService extends HttpServlet {
 		public InvalidVerificationCodeException(final String msg, final Throwable cause) {
 			super(msg, cause);
 		}
-	}
-
-	/**
-	 * Identifica cuando se ha configurado una firma con el formato XAdES y la
-	 * propiedad {@code mode} con el valor {@code explicit}. Esta no es una firma
-	 * correcta pero, por compatibilidad con los tipos de firmas del Applet pesado,
-	 * se ha incluido aqu&iacute;.
-	 * @param format Formato declarado para la firma.
-	 * @param config Par&aacute;metros adicionales declarados para la firma.
-	 * @return {@code true} si se configura una firma <i>XAdES explicit</i>,
-	 *         {@code false} en caso contrario.
-	 * @deprecated Uso temporal hasta que se elimine el soporte de firmas XAdES
-	 *             expl&iacute;citas.
-	 */
-	@Deprecated
-	private static boolean isXadesExplicitConfigurated(final String format, final Properties config) {
-		return format != null
-				&& format.toLowerCase().startsWith("xades") //$NON-NLS-1$
-				&& config != null
-				&& AOSignConstants.SIGN_MODE_EXPLICIT.equalsIgnoreCase(config.getProperty("mode")); //$NON-NLS-1$
 	}
 }

@@ -38,7 +38,6 @@ import es.gob.afirma.signers.padestri.client.AOPDFTriPhaseSigner;
 import es.gob.afirma.signers.pkcs7.ContainsNoDataException;
 import es.gob.afirma.signers.xades.EFacturaAlreadySignedException;
 import es.gob.afirma.signers.xades.InvalidEFacturaDataException;
-import es.gob.afirma.signers.xades.XAdESExtraParams;
 import es.gob.afirma.signers.xml.InvalidXMLException;
 import es.gob.afirma.signvalidation.InvalidSignatureException;
 import es.gob.afirma.signvalidation.SignValider;
@@ -61,7 +60,6 @@ import es.gob.afirma.standalone.ui.pdf.SignPdfDialog.SignPdfDialogListener;
 import javax.swing.*;
 import java.io.*;
 import java.security.KeyStore.PrivateKeyEntry;
-import java.security.MessageDigest;
 import java.security.cert.CertificateEncodingException;
 import java.util.*;
 import java.util.logging.Level;
@@ -141,25 +139,24 @@ final class ProtocolInvocationLauncherSign {
 		final List<SignOperation> operations = processor.preProcess(operation);
 		final boolean isMassiveSign = operations.size() > 1;
 		final List<SignResult> results = new ArrayList<>(operations.size());
-		for (int i = 0; i < operations.size(); i++) {
-			final SignOperation op = operations.get(i);
-			try {
-				results.add(sign(op, options, isMassiveSign, pkeSelected));
-			}
-			catch (final SocketOperationException e) {
-				LOGGER.log(Level.SEVERE, "Se identifico un error en una operacion de firma", e); //$NON-NLS-1$
-				// Salvo que el procesador indique que se permiten los errores, se relanza para
-				// bloquear la ejecucion
-				if (!processor.isErrorsAllowed()) {
-					ProgressInfoDialogManager.hideProgressDialog();
-					throw e;
-				}
-			}
-			catch (final RuntimeException e) {
-				ProgressInfoDialogManager.hideProgressDialog();
-				throw e;
-			}
-		}
+        for (final SignOperation op : operations) {
+            try {
+                results.add(sign(op, options, isMassiveSign, pkeSelected));
+            }
+            catch (final SocketOperationException e) {
+                LOGGER.log(Level.SEVERE, "Se identifico un error en una operacion de firma", e); //$NON-NLS-1$
+                // Salvo que el procesador indique que se permiten los errores, se relanza para
+                // bloquear la ejecucion
+                if (!processor.isErrorsAllowed()) {
+                    ProgressInfoDialogManager.hideProgressDialog();
+                    throw e;
+                }
+            }
+            catch (final RuntimeException e) {
+                ProgressInfoDialogManager.hideProgressDialog();
+                throw e;
+            }
+        }
 
 		StringBuilder dataToSend;
 		try {
@@ -283,56 +280,50 @@ final class ProtocolInvocationLauncherSign {
 		if (needRequestData) {
 			final String dialogTitle = Operation.SIGN == cryptoOperation
 					? ProtocolMessages.getString("ProtocolLauncher.25") //$NON-NLS-1$
-							: ProtocolMessages.getString("ProtocolLauncher.26"); //$NON-NLS-1$
+					: ProtocolMessages.getString("ProtocolLauncher.26"); //$NON-NLS-1$
 
-					final String fileExts = extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_EXTS);
+			final String fileExts = extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_EXTS);
 
-					final String fileDesc = extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_DESCRIPTION,
-							ProtocolMessages.getString("ProtocolLauncher.32")) + //$NON-NLS-1$
-							(fileExts == null ? " (*.*)" : String.format(" (*.%1s)", fileExts.replace(",", ",*."))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			final String extToDesc = fileExts == null
+					? " (*.*)" //$NON-NLS-1$
+					: String.format(" (*.%1s)", fileExts.replace(",", ",*.")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			final String fileDesc = extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_DESCRIPTION,
+					ProtocolMessages.getString("ProtocolLauncher.32") + extToDesc); //$NON-NLS-1$
 
-					final File selectedDataFile;
-					try {
-						if (Platform.OS.MACOSX.equals(Platform.getOS())) {
-							MacUtils.focusApplication();
-						}
+			final File selectedDataFile;
+			if (Platform.OS.MACOSX.equals(Platform.getOS())) {
+				MacUtils.focusApplication();
+			}
 
-						ProgressInfoDialogManager.hideProgressDialog();
+			ProgressInfoDialogManager.hideProgressDialog();
 
-						selectedDataFile = AOUIFactory.getLoadFiles(
-								dialogTitle,
-								extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_CURRENT_DIR), // currentDir
-								extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_FILENAME), // fileName
-								fileExts != null ? fileExts.split(",") : null, //$NON-NLS-1$
-										fileDesc,
-										false, // Select dir
-										false, // Multiselect
-										DesktopUtil.getDefaultDialogsIcon(),
-										null //Parent
-								)[0];
-					} catch (final AOCancelledOperationException e) {
-						throw e;
-					}
+			selectedDataFile = AOUIFactory.getLoadFiles(
+					dialogTitle,
+					extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_CURRENT_DIR), // currentDir
+					extraParams.getProperty(AfirmaExtraParams.LOAD_FILE_FILENAME), // fileName
+					fileExts != null ? fileExts.split(",") : null, //$NON-NLS-1$
+					fileDesc,
+					false, // Select dir
+					false, // Multiselect
+					DesktopUtil.getDefaultDialogsIcon(),
+					null //Parent
+			)[0];
 
-					// Asignamos el nombre del fichero firmado para devolverlo a la aplicacion
-					inputFilename = selectedDataFile.getName();
+			// Asignamos el nombre del fichero firmado para devolverlo a la aplicacion
+			inputFilename = selectedDataFile.getName();
 
-					try {
-						try (
-								final InputStream fis = new FileInputStream(selectedDataFile);
-								final InputStream bis = new BufferedInputStream(fis)
-								) {
-							data = AOUtil.getDataFromInputStream(bis);
-						}
-						if (data == null) {
-							throw new IOException("La lectura de datos para firmar ha devuelto un nulo"); //$NON-NLS-1$
-						}
-					} catch (final Exception e) {
-						LOGGER.severe("Error en la lectura de los datos a firmar: " + e); //$NON-NLS-1$
-						final ErrorCode errorCode = ErrorCode.Internal.LOADING_DATA_ERROR;
-						throw new SocketOperationException(e, errorCode);
-					}
-
+			try {
+				try (
+						final InputStream fis = new FileInputStream(selectedDataFile);
+						final InputStream bis = new BufferedInputStream(fis)
+				) {
+					data = AOUtil.getDataFromInputStream(bis);
+				}
+            } catch (final Exception e) {
+				LOGGER.severe("Error en la lectura de los datos a firmar: " + e); //$NON-NLS-1$
+				final ErrorCode errorCode = ErrorCode.Internal.LOADING_DATA_ERROR;
+				throw new SocketOperationException(e, errorCode);
+			}
 		}
 
 		// No haber fijado aun el firmador significa que se selecciono el formato AUTO y
@@ -345,22 +336,6 @@ final class ProtocolInvocationLauncherSign {
 				throw new SocketOperationException(errorCode);
 			}
 			signer = AOSignerFactory.getSigner(format);
-		}
-
-		// XXX: Codigo de soporte de firmas XAdES explicitas (Eliminar cuando se
-		// abandone el soporte de XAdES explicitas)
-		if (cryptoOperation == Operation.SIGN && isXadesExplicitConfigurated(format, extraParams)
-				&& !AOSignConstants.SIGN_FORMAT_XADES_TRI.equalsIgnoreCase(format)) {
-			LOGGER.warning(
-					"Se ha pedido una firma XAdES explicita, este formato dejara de soportarse en proximas versiones" //$NON-NLS-1$
-					);
-			try {
-				data = MessageDigest.getInstance("SHA1").digest(data); //$NON-NLS-1$
-				extraParams.setProperty("mimeType", "hash/sha1"); //$NON-NLS-1$ //$NON-NLS-2$
-			} catch (final Exception e) {
-				LOGGER.warning("Error al generar la huella digital de los datos para firmar como 'XAdES explicit', " //$NON-NLS-1$
-						+ "se realizara una firma XAdES corriente: " + e); //$NON-NLS-1$
-			}
 		}
 
 		// Si se ha pedido comprobar las firmas antes de agregarle la nueva firma, lo hacemos ahora
@@ -668,7 +643,7 @@ final class ProtocolInvocationLauncherSign {
 		catch (final PinException e) {
 			LOGGER.warning("PIN invalido. Reintentamos la operacion: " + e); //$NON-NLS-1$
 			// Forzando el reinicio del almacen y la seleccion automatica de ese certificado
-			List<CertificateFilter> filters = null;
+			List<CertificateFilter> filters;
 			try {
 				final byte[] certEncoded = pke.getCertificate().getEncoded();
 				final CertificateFilter filter = new EncodedCertificateFilter(Base64.encode(certEncoded));
@@ -883,28 +858,6 @@ final class ProtocolInvocationLauncherSign {
 		if (!Boolean.parseBoolean(allowPdfShadowAttackProp) && !extraParams.containsKey(PdfExtraParams.PAGES_TO_CHECK_PSA)) {
 			extraParams.setProperty(PdfExtraParams.PAGES_TO_CHECK_PSA, "10"); //$NON-NLS-1$
 		}
-	}
-
-	/**
-	 * Identifica cuando se ha configurado una firma con el formato XAdES y la
-	 * propiedad {@code mode} con el valor {@code explicit}. Esta no es una firma
-	 * correcta pero, por compatibilidad con los tipos de firmas del Applet pesado,
-	 * se ha incluido aqu&iacute;. No se considerar&aacute; explicita si se
-	 * configur&oacute; como firma manifest.
-	 * @param format Formato declarado para la firma.
-	 * @param config Par&aacute;metros adicionales declarados para la firma.
-	 * @return {@code true} si se configura una firma <i>XAdES explicit</i>
-	 * 			que no sea de manifest, {@code false} en caso contrario.
-	 * @deprecated Uso temporal hasta que se elimine el soporte de firmas XAdES
-	 *             expl&iacute;citas.
-	 */
-	@Deprecated
-	private static boolean isXadesExplicitConfigurated(final String format, final Properties config) {
-		return format != null
-				&& format.toLowerCase().startsWith("xades") //$NON-NLS-1$
-				&& config != null
-				&& AOSignConstants.SIGN_MODE_EXPLICIT.equalsIgnoreCase(config.getProperty(AfirmaExtraParams.MODE))
-				&& !Boolean.parseBoolean(config.getProperty(XAdESExtraParams.USE_MANIFEST));
 	}
 
 	/**
