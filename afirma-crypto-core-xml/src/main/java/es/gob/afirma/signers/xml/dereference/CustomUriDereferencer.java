@@ -12,7 +12,9 @@ package es.gob.afirma.signers.xml.dereference;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.logging.Logger;
 
 import javax.xml.crypto.Data;
@@ -43,6 +45,9 @@ public class CustomUriDereferencer implements URIDereferencer {
 
 	private static final String ID = "Id"; //$NON-NLS-1$
 
+	private static final String DEFAULT_SUN_URI_DEREFERENCER_CLASSNAME =           "org.jcp.xml.dsig.internal.dom.DOMURIDereferencer"; //$NON-NLS-1$
+	private static final String DEFAULT_APACHE_URI_DEREFERENCER_CLASSNAME = "org.apache.jcp.xml.dsig.internal.dom.DOMURIDereferencer"; //$NON-NLS-1$
+
 	private static final String DEFAULT_SUN_XML_SIGNATURE_INPUT_CLASSNAME = "com.sun.org.apache.xml.internal.security.signature.XMLSignatureInput"; //$NON-NLS-1$
 	private static final String DEFAULT_APACHE_XML_SIGNATURE_INPUT_CLASSNAME =               "org.apache.xml.security.signature.XMLSignatureInput"; //$NON-NLS-1$
 
@@ -61,11 +66,22 @@ public class CustomUriDereferencer implements URIDereferencer {
 		this.defaultUriDereferencer = Utils.getDOMFactory().getURIDereferencer();
 	}
 
+	/**
+	 * Crea un dereferenciador a medida que act&uacute;a solo cuando falla el dereferenciador por defecto
+	 * @param defaultDereferencer Dereferenciador por defecto
+	 */
+	public CustomUriDereferencer(final URIDereferencer defaultDereferencer) {
+		this.defaultUriDereferencer = defaultDereferencer;
+	}
+
 	private static Class<?> getNodesetDataClass() throws ClassNotFoundException {
 		try {
 			return Class.forName(DEFAULT_APACHE_NODESET_DATA);
 		}
-		catch (final Exception | Error e) {
+		catch (final Exception e) {
+			return Class.forName(DEFAULT_SUN_NODESET_DATA);
+		}
+		catch (final Error e) {
 			return Class.forName(DEFAULT_SUN_NODESET_DATA);
 		}
 	}
@@ -74,7 +90,10 @@ public class CustomUriDereferencer implements URIDereferencer {
 		try {
 			return Class.forName(DEFAULT_APACHE_OCTET_STREAM_DATA);
 		}
-		catch (final Exception | Error e) {
+		catch (final Exception e) {
+			return Class.forName(DEFAULT_SUN_OCTET_STREAM_DATA);
+		}
+		catch (final Error e) {
 			return Class.forName(DEFAULT_SUN_OCTET_STREAM_DATA);
 		}
 	}
@@ -83,11 +102,45 @@ public class CustomUriDereferencer implements URIDereferencer {
 		try {
 			return Class.forName(DEFAULT_APACHE_XML_SIGNATURE_INPUT_CLASSNAME);
 		}
-		catch (final Exception | Error e) {
+		catch (final Exception e) {
+			return Class.forName(DEFAULT_SUN_XML_SIGNATURE_INPUT_CLASSNAME);
+		}
+		catch (final Error e) {
 			return Class.forName(DEFAULT_SUN_XML_SIGNATURE_INPUT_CLASSNAME);
 		}
 	}
 
+	/** Obtiene el dereferenciador XML por defecto del JRE.
+	 *	Este sera el de Apache o el de Sun.
+	 * @return Dereferenciador XML por defecto del JRE.
+	 * @throws ClassNotFoundException Si no se encuentra ni el dereferenciador de Sun ni el de Apache. */
+	private static Class<?> getDereferencerClass() throws ClassNotFoundException {
+		try {
+			return Class.forName(DEFAULT_APACHE_URI_DEREFERENCER_CLASSNAME);
+		}
+		catch (final Exception e) {
+			return Class.forName(DEFAULT_SUN_URI_DEREFERENCER_CLASSNAME);
+		}
+		catch (final Error e) {
+			return Class.forName(DEFAULT_SUN_URI_DEREFERENCER_CLASSNAME);
+		}
+	}
+
+	/** Obtiene el dereferenciador a medida por defecto de Java.
+	 * @return Dereferenciador a medida por defecto de Java
+	 * @throws NoSuchFieldException Si falla la reflexi&oacute;n por cambios de las clases internas
+	 *                              de Java
+	 * @throws SecurityException Si no se tienen permisos para la reflexi&oacute;n
+	 * @throws ClassNotFoundException Si falla la reflexi&oacute;n por desaparici&oacute;n de las clases internas
+	 *                                de Java
+	 * @throws IllegalAccessException Si falla la reflexi&oacute;n por fallos de visibilidad */
+	public static URIDereferencer getDefaultDereferencer() throws NoSuchFieldException,
+	                                                              ClassNotFoundException,
+	                                                              IllegalAccessException {
+		final Field instanceField = getDereferencerClass().getDeclaredField("INSTANCE"); //$NON-NLS-1$
+    	instanceField.setAccessible(true);
+    	return (URIDereferencer) instanceField.get(null);
+	}
 
 	@Override
 	public Data dereference(final URIReference domRef, final XMLCryptoContext context) throws URIReferenceException {
@@ -100,47 +153,12 @@ public class CustomUriDereferencer implements URIDereferencer {
 
 			// Si la referencia es http o https salimos, esta clase es para referencias dentro del mismo contexto XML
 			final String uri = domRef.getURI();
-			if (uri.startsWith("http://") || uri.startsWith("https://")) { //$NON-NLS-1$ //$NON-NLS-2$
-				LOGGER.info("Se ha pedido dereferenciar una URI externa: " + uri);  //$NON-NLS-1$
-				byte[] externalContent;
-				final SSLErrorProcessor errorProcessor = new SSLErrorProcessor();
-				try {
-					externalContent = UrlHttpManagerFactory.getInstalledManager().readUrl(uri, UrlHttpMethod.GET, errorProcessor);
-				}
-				catch (final Exception e1) {
-					if (errorProcessor.isCancelled()) {
-						LOGGER.info("El usuario no permite la importacion del certificado SSL de confianza para referenciar los datos desde el dominio " //$NON-NLS-1$
+			String prefixUriLc = uri.substring(0, Math.min(8, uri.length())).toLowerCase(Locale.getDefault());
+			if (prefixUriLc.startsWith("http://") || prefixUriLc.startsWith("https://") //$NON-NLS-1$ //$NON-NLS-2$
+					|| prefixUriLc.startsWith("ftp://") || prefixUriLc.startsWith("file://")) { //$NON-NLS-1$ //$NON-NLS-2$
+				Logger.getLogger("es.gob.afirma").warning( //$NON-NLS-1$
+						"Se ha pedido dereferenciar una URI externa. Bloqueamos la operacion: "  //$NON-NLS-1$
 								+ LoggerUtil.getTrimStr(uri));
-					} else {
-						LOGGER.severe("No se han podido derreferenciar los datos desde " + LoggerUtil.getTrimStr(uri) + ": " + e1); //$NON-NLS-1$ //$NON-NLS-2$
-					}
-					throw new URIReferenceException(
-						"No se ha podido descargar el contenido externo (" + LoggerUtil.getTrimStr(uri) + "): " + e1, e1 //$NON-NLS-1$ //$NON-NLS-2$
-					);
-				}
-
-				try {
-					return getStreamData(
-							SecureXmlBuilder.getSecureDocumentBuilder().parse(
-							new ByteArrayInputStream(externalContent)
-						)
-					);
-				}
-				catch (final ParserConfigurationException e1) {
-					throw new URIReferenceException(
-						"No se ha podido crear un XML a partir del contenido externo dereferenciado por error del analizador (" + e + "): " + e1, e1 //$NON-NLS-1$ //$NON-NLS-2$
-					);
-				}
-				catch (final SAXException e1) {
-					throw new URIReferenceException(
-						"No se ha podido crear un XML a partir del contenido externo dereferenciado por error SAX (" + e + "): " + e1, e1 //$NON-NLS-1$ //$NON-NLS-2$
-					);
-				}
-				catch (final IOException e1) {
-					throw new URIReferenceException(
-						"No se ha podido crear un XML a partir del contenido externo dereferenciado (" + e + "): " + e1, e1 //$NON-NLS-1$ //$NON-NLS-2$
-					);
-				}
 			}
 
 			final Attr uriAttr = (Attr) ((DOMURIReference)domRef).getHere();
@@ -180,7 +198,7 @@ public class CustomUriDereferencer implements URIDereferencer {
 	public static Node getNodeByInternalUriReference(final String uriValue, final Document doc) {
         // Buscamos el nodo en todo el XML
     	String id = uriValue;
-    	if (uriValue.length() > 0 && uriValue.charAt(0) == '#') {
+    	if (!uriValue.isEmpty() && uriValue.charAt(0) == '#') {
     		id = uriValue.substring(1);
     	}
     	return getElementById(doc, id);

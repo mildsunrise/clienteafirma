@@ -51,6 +51,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
+import es.gob.afirma.signers.xml.dereference.CustomUriDereferencer;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
@@ -381,7 +383,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         if (mode.equals(AOSignConstants.SIGN_MODE_IMPLICIT)) {
             try {
                 // Obtenemos el objeto XML y su codificacion
-                final Document docum = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(data));
+                final Document docum = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(data));
 
                 // Obtenemos la hoja de estilo del XML
                 if (!ignoreStyleSheets) {
@@ -482,7 +484,7 @@ public final class AOXMLDSigSigner implements AOSigner {
                     LOGGER.info("El documento no es un XML valido. Se convertira a Base64: " + e); //$NON-NLS-1$
 
                     // crea un nuevo nodo xml para contener los datos en base 64
-                    final Document docFile = Utils.getNewDocumentBuilder().newDocument();
+                    final Document docFile = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
                     dataElement = docFile.createElement(DETACHED_CONTENT_ELEMENT_NAME);
                     uri = null;
                     encoding = XMLConstants.BASE64_ENCODING;
@@ -582,7 +584,7 @@ public final class AOXMLDSigSigner implements AOSigner {
 
             final Document docFile;
             try {
-                docFile = Utils.getNewDocumentBuilder().newDocument();
+                docFile = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
             }
             catch (final Exception e) {
                 throw new AOException("No se ha podido crear el documento XML contenedor: " + e, e, XMLErrorCode.Internal.INTERNAL_XML_SIGNING_ERROR); //$NON-NLS-1$
@@ -624,7 +626,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         // Crea el nuevo documento de firma
         Document docSignature = null;
         try {
-            docSignature = Utils.getNewDocumentBuilder().newDocument();
+            docSignature = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
             if (format.equals(AOSignConstants.SIGN_FORMAT_XMLDSIG_ENVELOPED)) {
                 docSignature.appendChild(docSignature.adoptNode(dataElement));
             }
@@ -1143,7 +1145,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         if (format.equals(AOSignConstants.SIGN_FORMAT_XMLDSIG_ENVELOPING)) {
             try {
                 if (docSignature.getElementsByTagName(signatureNodeName).getLength() == 1) {
-                    final Document newdoc = Utils.getNewDocumentBuilder().newDocument();
+                    final Document newdoc = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
                     newdoc.appendChild(newdoc.adoptNode(docSignature.getElementsByTagName(signatureNodeName).item(0)));
                     docSignature = newdoc;
                 }
@@ -1226,7 +1228,7 @@ public final class AOXMLDSigSigner implements AOSigner {
             }
 
             // obtiene la raiz del documento de firmas
-            rootSig = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(sign)).getDocumentElement();
+            rootSig = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(sign)).getDocumentElement();
 
             // si es detached
             if (AOXMLDSigSigner.isDetached(rootSig)) {
@@ -1346,7 +1348,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         Document docSig;
         Element rootSig;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
             docSig = docBuilder.parse(new ByteArrayInputStream(sign));
             rootSig = docSig.getDocumentElement();
 
@@ -1620,7 +1622,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         Element rootSig;
         Element rootData;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
             rootSig = docBuilder.parse(new ByteArrayInputStream(sign)).getDocumentElement();
 
             final Document docData = docBuilder.newDocument();
@@ -1735,7 +1737,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         final Map<String, String> originalXMLProperties = new Hashtable<>();
         Element root;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
             this.doc = docBuilder.parse(new ByteArrayInputStream(sign));
 
             // Tomamos la configuracion del XML que contrafirmamos
@@ -2178,7 +2180,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         Element root;
         final String completePrefix;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
             this.doc = docBuilder.parse(new ByteArrayInputStream(sign));
             root = this.doc.getDocumentElement();
 
@@ -2283,7 +2285,7 @@ public final class AOXMLDSigSigner implements AOSigner {
 
         try {
             // Carga el documento a validar
-            final Document signDoc = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(sign));
+            final Document signDoc = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(sign));
             final Element rootNode = signDoc.getDocumentElement();
 
             final ArrayList<Node> signNodes = new ArrayList<>();
@@ -2368,7 +2370,7 @@ public final class AOXMLDSigSigner implements AOSigner {
         // Tomamos la raiz del documento
         Element rootSig = null;
         try {
-            rootSig = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(data)).getDocumentElement();
+            rootSig = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(data)).getDocumentElement();
         }
         catch (final Exception e) {
             LOGGER.warning("Error al analizar la firma: " + e); //$NON-NLS-1$

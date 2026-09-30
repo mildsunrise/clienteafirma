@@ -37,7 +37,7 @@ import es.gob.afirma.core.misc.Platform;
 final class AppleKeyStoreManager extends AOKeyStoreManager {
 
 	AppleKeyStoreManager() {
-		setKeyStoreType(AOKeyStore.APPLE);
+		setType(AOKeyStore.APPLE);
 	}
 
 	@Override

@@ -286,7 +286,7 @@ public final class AOODFSigner implements AOSigner {
 	        				null,
 	        				md.digest(
 	        					OdfXmlUtil.canonicalizeXml(
-	        							Utils.getNewDocumentBuilder().parse(
+	        							SecureXmlBuilder.getSecureDocumentBuilder().parse(
 											new ByteArrayInputStream(manifestData)
 									).getDocumentElement(),
 	    							CANONICAL_XML_ALGORITHM
@@ -323,7 +323,7 @@ public final class AOODFSigner implements AOSigner {
 	                        		// Obtiene su forma canonica y su DigestValue
 		                    		md.digest(
 		                				OdfXmlUtil.canonicalizeXml(
-		                						Utils.getNewDocumentBuilder().parse(zis).getDocumentElement(),
+												SecureXmlBuilder.getSecureDocumentBuilder().parse(zis).getDocumentElement(),
 		            						CANONICAL_XML_ALGORITHM
 		        						)
 		            				)
@@ -374,7 +374,7 @@ public final class AOODFSigner implements AOSigner {
 	            	try (
             			final InputStream zis = zf.getInputStream(zf.getEntry(SIGNATURES_PATH))
         			) {
-		                docSignatures = Utils.getNewDocumentBuilder().parse(
+		                docSignatures = SecureXmlBuilder.getSecureDocumentBuilder().parse(
 	                		zis
 	            		);
 	            	}
@@ -382,7 +382,7 @@ public final class AOODFSigner implements AOSigner {
 	            }
 	            else {
 	                // crea un nuevo documento de firmas
-	                docSignatures = Utils.getNewDocumentBuilder().newDocument();
+	                docSignatures = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
 	                rootSignatures = docSignatures.createElement("document-signatures"); //$NON-NLS-1$
 	                rootSignatures.setAttribute("xmlns", OPENOFFICE); //$NON-NLS-1$
 	                docSignatures.appendChild(rootSignatures);
@@ -414,7 +414,7 @@ public final class AOODFSigner implements AOSigner {
 	            // para evitar un error con Java 11
 	            final String contentString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss,SS") //$NON-NLS-1$
 	            		.format(new Date());
-	            final Document dateDocument = Utils.getNewDocumentBuilder().parse(
+	            final Document dateDocument = SecureXmlBuilder.getSecureDocumentBuilder().parse(
 	            		new ByteArrayInputStream(
 	            				("<dc:date xmlns:dc=\"http://purl.org/dc/elements/1.1/\">" + contentString + "</dc:date>") //$NON-NLS-1$ //$NON-NLS-2$
 	            					.getBytes()));

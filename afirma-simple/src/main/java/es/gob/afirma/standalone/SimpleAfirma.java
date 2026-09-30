@@ -101,21 +101,7 @@ import es.gob.afirma.standalone.updater.Updater;
 import javax.smartcardio.CardTerminal;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.nio.channels.FileLock;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
 import java.util.logging.*;
 
 /**
@@ -497,7 +483,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 					    lib, // Lib
 						null, // Description
 						aoks.getStorePasswordCallback(this), // PasswordCallback
-						this // Parent
+						this, // Parent
+						false
 				);
 
 			} catch (final KeystoreAlternativeException e) {
@@ -513,7 +500,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 						    lib, // Lib
 							null, // Description
 							aoks.getStorePasswordCallback(this), // PasswordCallback
-							this // Parent
+							this, // Parent
+							false
 					);
 				} catch (final Exception e1) {
 		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e1); //$NON-NLS-1$
@@ -534,7 +522,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 						    lib, // Lib
 							null, // Description
 							aoks.getStorePasswordCallback(this), // PasswordCallback
-							this // Parent
+							this, // Parent
+							false
 					);
 				} catch (final Exception e1) {
 		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e); //$NON-NLS-1$
@@ -554,7 +543,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 						    lib, // Lib
 							null, // Description
 							aoks.getStorePasswordCallback(this), // PasswordCallback
-							this // Parent
+							this, // Parent
+							false
 					);
 				} catch (final Exception e1) {
 		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e1); //$NON-NLS-1$
@@ -576,7 +566,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
     					    lib, // Lib
     						null, // Description
     						aoks.getStorePasswordCallback(this), // PasswordCallback
-    						this // Parent
+    						this, // Parent
+							false
     				);
 
     			} catch (final KeystoreAlternativeException e) {
@@ -592,7 +583,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
     						    lib, // Lib
     							null, // Description
     							aoks.getStorePasswordCallback(this), // PasswordCallback
-    							this // Parent
+    							this, // Parent
+								false
     					);
     				} catch (final Exception e1) {
     		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e1); //$NON-NLS-1$
@@ -613,7 +605,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
     						    lib, // Lib
     							null, // Description
     							aoks.getStorePasswordCallback(this), // PasswordCallback
-    							this // Parent
+    							this, // Parent
+								false
     					);
     				} catch (final Exception e1) {
     		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e); //$NON-NLS-1$
@@ -633,7 +626,8 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
     						    lib, // Lib
     							null, // Description
     							aoks.getStorePasswordCallback(this), // PasswordCallback
-    							this // Parent
+    							this, // Parent
+								false
     					);
     				} catch (final Exception e1) {
     		 			LOGGER.log(Level.SEVERE, "Error al seleccionar el almacen del sistema", e1); //$NON-NLS-1$
@@ -691,6 +685,22 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
         		LOGGER.log(Level.SEVERE, "No se ha podido validar el documento correctamente", e); //$NON-NLS-1$
 			}
         }
+		// En caso de firma ODF, se muestra la pantalla de detalle indicando que se desconoce la validez y que debe
+		// usarse un lector de ODF
+		else if(DataAnalizerUtil.isSignedODF(signature)) {
+			validityList.add(new SignValidity(SIGN_DETAIL_TYPE.UNKNOWN, SignValidity.VALIDITY_ERROR.ODF_UNKOWN_VALIDITY));
+		}
+		// En caso de firma OOXML, se muestra la pantalla de detalle indicando que se desconoce la validez y que debe
+		// Office para su validacion
+		else if(DataAnalizerUtil.isSignedOOXML(signature)) {
+			validityList.add(new SignValidity(SIGN_DETAIL_TYPE.UNKNOWN, SignValidity.VALIDITY_ERROR.OOXML_UNKOWN_VALIDITY));
+		}
+		// En cualquier otro caso, se muestra un error indicando que no se ha podido validar la firma, ya que no se
+		// reconoce el formato de la misma
+		else {
+			AOUIFactory.showErrorMessage(SimpleAfirmaMessages.getString("SimpleAfirma.59"), //$NON-NLS-1$);
+					SimpleAfirmaMessages.getString("SimpleAfirma.7"), AOUIFactory.WARNING_MESSAGE, null); //$NON-NLS-1$
+		}
         final SignValidity signValidity = validityListResult.get(0);
         if (signValidity != null && (SIGN_DETAIL_TYPE.KO.equals(signValidity.getValidity()) || SIGN_DETAIL_TYPE.UNKNOWN.equals(signValidity.getValidity()))) {
         	validityList = validityListResult;
@@ -1061,7 +1071,9 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 								null, // Lib
 								"AFIRMA-NSS-KEYSTORE", // Description //$NON-NLS-1$
 								null, // PasswordCallback
-								null); // Parent);
+								null, // Parent
+								false
+						);
 						saf.setKeyStoreManager(ksm);
 					} catch (final Exception e1) {
 						LOGGER.severe(

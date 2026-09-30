@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Document;
@@ -136,7 +137,7 @@ public final class Test_Ticket_209544_OnlySignningCert {
                     }
                     System.out.println("Temporal para comprobacion manual: " + f.getAbsolutePath()); //$NON-NLS-1$
 
-                    final Document doc = Utils.getNewDocumentBuilder().parse(
+                    final Document doc = SecureXmlBuilder.getSecureDocumentBuilder().parse(
                     		new ByteArrayInputStream(result));
 
                     final NodeList nl = doc.getElementsByTagNameNS(es.gob.afirma.signers.xml.XMLConstants.DSIGNNS, "X509Data"); //$NON-NLS-1$
@@ -227,7 +228,7 @@ public final class Test_Ticket_209544_OnlySignningCert {
 
                     System.out.println("Temporal para comprobacion manual: " + f.getAbsolutePath()); //$NON-NLS-1$
 
-                    final Document doc = Utils.getNewDocumentBuilder().parse(
+                    final Document doc = SecureXmlBuilder.getSecureDocumentBuilder().parse(
                     		new ByteArrayInputStream(cosignResult));
 
                     final NodeList nl = doc.getElementsByTagNameNS(es.gob.afirma.signers.xml.XMLConstants.DSIGNNS, "X509Data"); //$NON-NLS-1$
@@ -319,7 +320,7 @@ public final class Test_Ticket_209544_OnlySignningCert {
                     }
                     System.out.println("Temporal para comprobacion manual: " + f.getAbsolutePath()); //$NON-NLS-1$
 
-                    final Document doc = Utils.getNewDocumentBuilder().parse(
+                    final Document doc = SecureXmlBuilder.getSecureDocumentBuilder().parse(
                     		new ByteArrayInputStream(countersignResult));
 
                     final NodeList nl = doc.getElementsByTagNameNS(es.gob.afirma.signers.xml.XMLConstants.DSIGNNS, "X509Data"); //$NON-NLS-1$

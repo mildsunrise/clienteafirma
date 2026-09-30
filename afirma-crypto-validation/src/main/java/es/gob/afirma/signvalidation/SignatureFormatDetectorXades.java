@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -55,7 +56,7 @@ public final class SignatureFormatDetectorXades implements ISignatureFormatDetec
 	if (AOFileUtils.isXML(signature)) {
 	    try {
 		// Obtenemos el documento XML
-		final Document doc = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(signature));
+		final Document doc = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(signature));
 
 		// Obtenemos la lista de elementos ds:Signature que no
 		// correspondan

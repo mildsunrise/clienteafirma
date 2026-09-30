@@ -9,15 +9,6 @@
 
 package es.gob.afirma.standalone.protocol;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.security.auth.callback.PasswordCallback;
-
-import org.json.JSONException;
-
 import es.gob.afirma.ciphers.ServerCipher;
 import es.gob.afirma.ciphers.ServerCipherFactory;
 import es.gob.afirma.core.AOException;
@@ -40,6 +31,13 @@ import es.gob.afirma.standalone.SimpleAfirma;
 import es.gob.afirma.standalone.SimpleErrorCode;
 import es.gob.afirma.standalone.plugins.SignOperation.Operation;
 import es.gob.afirma.standalone.ui.tasks.LoadKeystoreTask;
+import org.json.JSONException;
+
+import javax.security.auth.callback.PasswordCallback;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 final class ProtocolInvocationLauncherUtil {
 
@@ -269,11 +267,12 @@ final class ProtocolInvocationLauncherUtil {
 					aoksLib, // Lib
 					null, // Description
 					pwc, // PasswordCallback
-					null // Parent
+					null, // Parent
+					false
 			);
 		}
 		catch (final KeystoreAlternativeException e) {
-			final AOKeyStore ksType = e.getAlternativeKsm();
+			AOKeyStore ksType = e.getAlternativeKsm();
 			if (ksType != null && ksType == aoks) {
 				throw e;
 			}

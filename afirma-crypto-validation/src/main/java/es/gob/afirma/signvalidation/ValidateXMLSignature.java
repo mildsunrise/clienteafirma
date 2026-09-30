@@ -24,12 +24,7 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.xml.crypto.AlgorithmMethod;
-import javax.xml.crypto.KeySelector;
-import javax.xml.crypto.KeySelectorException;
-import javax.xml.crypto.KeySelectorResult;
-import javax.xml.crypto.XMLCryptoContext;
-import javax.xml.crypto.XMLStructure;
+import javax.xml.crypto.*;
 import javax.xml.crypto.dsig.Reference;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureException;
@@ -39,6 +34,7 @@ import javax.xml.crypto.dsig.keyinfo.KeyInfo;
 import javax.xml.crypto.dsig.keyinfo.KeyValue;
 import javax.xml.crypto.dsig.keyinfo.X509Data;
 
+import es.gob.afirma.core.misc.LoggerUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -176,8 +172,15 @@ public final class ValidateXMLSignature extends SignValider {
         	}
         }
         catch (final XMLSignatureException xmle) {
-        	LOGGER.log(Level.WARNING, "La firma no esta formada correctamente: " + xmle, xmle); //$NON-NLS-1$
-        	result.add(new SignValidity(SIGN_DETAIL_TYPE.KO, VALIDITY_ERROR.BAD_BUILD_SIGN, xmle));
+			if (xmle.getCause() != null && xmle.getCause() instanceof URIReferenceException) {
+				LOGGER.log(Level.WARNING, "Se ha encontrado una referencia externa en los datos que no se derreferenciara: " //$NON-NLS-1$
+						+ LoggerUtil.getTrimStr(((URIReferenceException) xmle.getCause()).getURIReference().getURI()), xmle);
+				result.add(new SignValidity(SIGN_DETAIL_TYPE.UNKNOWN, VALIDITY_ERROR.CANT_VALIDATE_EXTERNALLY_DETACHED, xmle));
+			}
+			else {
+				LOGGER.log(Level.WARNING, "La firma no esta formada correctamente: " + xmle, xmle); //$NON-NLS-1$
+				result.add(new SignValidity(SIGN_DETAIL_TYPE.KO, VALIDITY_ERROR.BAD_BUILD_SIGN, xmle));
+			}
         }
         catch (final Exception e) {
         	LOGGER.log(Level.WARNING, "No se ha podido validar la firma: " + e, e); //$NON-NLS-1$

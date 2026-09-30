@@ -19,6 +19,7 @@ import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -259,7 +260,7 @@ public final class AOFacturaESigner implements AOSigner {
 
         final Document signDocument;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
         	signDocument = docBuilder.parse(new ByteArrayInputStream(sign));
         }
         catch (final Exception e) {
@@ -287,7 +288,7 @@ public final class AOFacturaESigner implements AOSigner {
 
         Document dataDocument;
         try {
-        	final DocumentBuilder docBuilder = Utils.getNewDocumentBuilder();
+        	final DocumentBuilder docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
         	dataDocument = docBuilder.parse(new ByteArrayInputStream(data));
         }
         catch (final Exception e) {

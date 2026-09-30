@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -89,7 +90,7 @@ public class FacturaESignAnalyzer implements SignAnalyzer {
             this.signersTree = signInfo.getSignsTree();
     		this.signDetailsList = new ArrayList<>();
     		this.certDetailsList = new ArrayList<>();
-    		this.signDocument = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(data));
+    		this.signDocument = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(data));
     		final NodeList signaturesList = this.signDocument.getElementsByTagNameNS(XMLConstants.DSIGNNS, XMLConstants.TAG_SIGNATURE);
     		createSignDetails(signaturesList);
     	}

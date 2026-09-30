@@ -29,6 +29,7 @@ import java.util.logging.Logger;
 
 import javax.xml.crypto.dsig.DigestMethod;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Document;
@@ -832,7 +833,7 @@ public final class TestXAdES {
 
         final Document document;
         try {
-            document = Utils.getNewDocumentBuilder().parse(sign);
+            document = SecureXmlBuilder.getSecureDocumentBuilder().parse(sign);
         }
         catch (final Exception e) {
             System.out.println("No es una firma valida: " + e); //$NON-NLS-1$

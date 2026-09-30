@@ -24,8 +24,8 @@ public class SecureXmlTransformer {
 			TRANSFORMER_FACTORY = TransformerFactory.newInstance();
 			try {
 				TRANSFORMER_FACTORY.setFeature(SecureXmlConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE.booleanValue());
-				TRANSFORMER_FACTORY.setAttribute(SecureXmlConstants.ACCESS_EXTERNAL_DTD, ""); //$NON-NLS-1$
-				TRANSFORMER_FACTORY.setAttribute(SecureXmlConstants.ACCESS_EXTERNAL_STYLESHEET, ""); //$NON-NLS-1$
+				TRANSFORMER_FACTORY.setAttribute(SecureXmlConstants.ATTRIBUTE_ACCESS_EXTERNAL_DTD, ""); //$NON-NLS-1$
+				TRANSFORMER_FACTORY.setAttribute(SecureXmlConstants.ATTRIBUTE_ACCESS_EXTERNAL_STYLESHEET, ""); //$NON-NLS-1$
 			}
 			catch (final Exception e) {
 				Logger.getLogger("es.gob.afirma").log(Level.WARNING, "No se ha podido establecer el procesado seguro en la factoria XML: " + e); //$NON-NLS-1$ //$NON-NLS-2$

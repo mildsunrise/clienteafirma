@@ -40,9 +40,6 @@ import javax.xml.crypto.dsig.spec.XPathFilter2ParameterSpec;
 import javax.xml.crypto.dsig.spec.XPathFilterParameterSpec;
 import javax.xml.crypto.dsig.spec.XPathType;
 import javax.xml.crypto.dsig.spec.XPathType.Filter;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 
 import org.w3c.dom.Document;
@@ -65,55 +62,10 @@ public final class Utils {
 
     private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
 
-    private static DocumentBuilderFactory SECURE_BUILDER_FACTORY;
-
-
-	static {
-		SECURE_BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
-		try {
-			SECURE_BUILDER_FACTORY.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE.booleanValue());
-		}
-		catch (final Exception e) {
-			LOGGER.log(Level.WARNING, "No se ha podido establecer el procesado seguro en la factoria XML: " + e); //$NON-NLS-1$
-		}
-
-		// Los siguientes atributos deberia establececerlos automaticamente la implementacion de
-		// la biblioteca al habilitar la caracteristica anterior. Por si acaso, los establecemos
-		// expresamente
-		final String[] securityProperties = new String[] {
-				javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD,
-				javax.xml.XMLConstants.ACCESS_EXTERNAL_SCHEMA,
-				javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET
-		};
-		for (final String securityProperty : securityProperties) {
-			try {
-				SECURE_BUILDER_FACTORY.setAttribute(securityProperty, ""); //$NON-NLS-1$
-			}
-			catch (final Exception e) {
-				// Podemos las trazas en debug ya que estas propiedades son adicionales
-				// a la activacion de el procesado seguro
-				LOGGER.log(Level.FINE, "No se ha podido establecer una propiedad de seguridad '" + securityProperty + "' en la factoria XML"); //$NON-NLS-1$ //$NON-NLS-2$
-			}
-		}
-
-		SECURE_BUILDER_FACTORY.setValidating(false);
-		SECURE_BUILDER_FACTORY.setNamespaceAware(true);
-	}
-
-
     private Utils() {
         // No permitimos la instanciacion
     }
 
-
-	/**
-	 * Obtiene un objeto para la composici&oacute;n de documentos DOM.
-	 * @return Objeto para la composici&oacute;n de documentos DOM.
-	 * @throws ParserConfigurationException Cuando no se puede obtener el objeto.
-	 */
-	public static DocumentBuilder getNewDocumentBuilder() throws ParserConfigurationException {
-		return SECURE_BUILDER_FACTORY.newDocumentBuilder();
-	}
 
     /** A&ntilde;ade la cabecera de hoja de estilo a un XML dado.
      * @param xml XML origen.
@@ -153,7 +105,7 @@ public final class Utils {
      * @param xmlSignaturePrefix Prefijo XMLDSig. */
     public static void addCustomTransforms(final List<Transform> transforms, final Properties xParams, final String xmlSignaturePrefix) {
 
-        final List<Transform> transformList = transforms != null ? transforms : new ArrayList<Transform>();
+        final List<Transform> transformList = transforms != null ? transforms : new ArrayList<>();
         final Properties extraParams = xParams != null ? xParams : new Properties();
 
         // primero compruebo si hay transformaciones a medida
@@ -165,8 +117,8 @@ public final class Utils {
         TransformParameterSpec transformParam;
 
         for (int i = 0; i < numTransforms; i++) {
-            transformType = extraParams.getProperty("xmlTransform" + Integer.toString(i) + "Type"); //$NON-NLS-1$ //$NON-NLS-2$
-            transformBody = extraParams.getProperty("xmlTransform" + Integer.toString(i) + "Body"); //$NON-NLS-1$ //$NON-NLS-2$
+            transformType = extraParams.getProperty("xmlTransform" + i + "Type"); //$NON-NLS-1$ //$NON-NLS-2$
+            transformBody = extraParams.getProperty("xmlTransform" + i + "Body"); //$NON-NLS-1$ //$NON-NLS-2$
 
             if (Transform.XPATH.equals(transformType) && transformBody != null) {
                 try {
@@ -180,7 +132,7 @@ public final class Utils {
                 }
             }
             else if (Transform.XPATH2.equals(transformType) && transformBody != null) {
-                transformSubtype = extraParams.getProperty("xmlTransform" + Integer.toString(i) + "Subtype"); //$NON-NLS-1$ //$NON-NLS-2$
+                transformSubtype = extraParams.getProperty("xmlTransform" + i + "Subtype"); //$NON-NLS-1$ //$NON-NLS-2$
                 if ("subtract".equals(transformSubtype)) { //$NON-NLS-1$
                     xPath2TransformFilter = Filter.SUBTRACT;
                 }
@@ -312,19 +264,18 @@ public final class Utils {
         // Comprobamos que la transformacion sea de tipo XPATH o XPATH2, unicos
         // casos en los que
         // la transformacion recibe parametros
-        if (algorithm != null && (Transform.XPATH.equals(algorithm) || Transform.XPATH2.equals(algorithm))) {
+        if ((Transform.XPATH.equals(algorithm) || Transform.XPATH2.equals(algorithm))) {
 
             // Si es una transformacion XPATH solo tenemos que recoger el cuerpo
+            final NodeList xpathTransforms = transformNode.getChildNodes();
             if (Transform.XPATH.equals(algorithm)) {
 
-                final NodeList xpathTransforms = transformNode.getChildNodes();
                 for (int i = 0; i < xpathTransforms.getLength(); i++) {
                     final Node xpathTransformNode = xpathTransforms.item(i);
-
-                    // Probamos a encontrar un nodo XPath sin namespace y con el
-                    // namespace indicado
                     if ("XPath".equals(xpathTransformNode.getNodeName()) || (namespacePrefix + ":XPath").equals(xpathTransformNode.getNodeName())) { //$NON-NLS-1$ //$NON-NLS-2$
 
+                        // Probamos a encontrar un nodo XPath sin namespace y con el
+                        // namespace indicado
                         if (namespacePrefix == null || namespacePrefix.isEmpty()) {
                             params = new XPathFilterParameterSpec(xpathTransformNode.getTextContent());
                         }
@@ -349,9 +300,8 @@ public final class Utils {
             }
             // Si la transformacion es XPATH2 debemos tomar el cuerpo y el
             // subtipo
-            else if (Transform.XPATH2.equals(algorithm)) {
+            else {
 
-                final NodeList xpathTransforms = transformNode.getChildNodes();
                 for (int i = 0; i < xpathTransforms.getLength(); i++) {
                     final Node xpathTransformNode = xpathTransforms.item(i);
                     if ("XPath".equals(xpathTransformNode.getNodeName()) || (namespacePrefix + ":XPath").equals(xpathTransformNode.getNodeName())) { //$NON-NLS-1$ //$NON-NLS-2$
@@ -362,18 +312,19 @@ public final class Utils {
                             throw new InvalidAlgorithmParameterException("No se ha declarado un subtipo para la transformacion XPATH2"); //$NON-NLS-1$
                         }
 						final String filterName = filterNode.getNodeValue();
-						if (filterName.equals("subtract")) { //$NON-NLS-1$
-						    filter = Filter.SUBTRACT;
-						}
-						else if (filterName.equals("intersect")) { //$NON-NLS-1$
-						    filter = Filter.INTERSECT;
-						}
-						else if (filterName.equals("union")) { //$NON-NLS-1$
-						    filter = Filter.UNION;
-						}
-						else {
-						    throw new InvalidAlgorithmParameterException("El subtipo '" + filterName + "' de la transformacion XPATH2 no es valido"); //$NON-NLS-1$ //$NON-NLS-2$
-						}
+                        switch (filterName) {
+                            case "subtract":  //$NON-NLS-1$
+                                filter = Filter.SUBTRACT;
+                                break;
+                            case "intersect":  //$NON-NLS-1$
+                                filter = Filter.INTERSECT;
+                                break;
+                            case "union":  //$NON-NLS-1$
+                                filter = Filter.UNION;
+                                break;
+                            default:
+                                throw new InvalidAlgorithmParameterException("El subtipo '" + filterName + "' de la transformacion XPATH2 no es valido"); //$NON-NLS-1$ //$NON-NLS-2$
+                        }
 
                         params = new XPathFilter2ParameterSpec(Collections.singletonList(new XPathType(xpathTransformNode.getTextContent(), filter)));
                         break;
@@ -490,7 +441,7 @@ public final class Utils {
      * @return Cadena de texto con el XML en forma de array de octetos. */
     public static byte[] writeXML(final Node node, final Map<String, String> props, final String styleHref, final String styleType) {
 
-        final Map<String, String> xmlProps = props != null ? props : new HashMap<String, String>(0);
+        final Map<String, String> xmlProps = props != null ? props : new HashMap<>(0);
 
         // La codificacion por defecto sera UTF-8
         final String xmlEncoding = xmlProps.containsKey(OutputKeys.ENCODING) ?
@@ -499,7 +450,7 @@ public final class Utils {
 
         // Primero creamos un writer
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Writer writer = null;
+        Writer writer;
         try {
             writer = new OutputStreamWriter(baos, xmlEncoding);
         }
@@ -518,11 +469,11 @@ public final class Utils {
 
         // Si se trata de un XML completo, insertamos la cabecera de hoja de estilo
         try {
-            return Utils.addStyleSheetHeader(new String(baos.toByteArray(), xmlEncoding), styleType, styleHref).getBytes(xmlEncoding);
+            return Utils.addStyleSheetHeader(baos.toString(xmlEncoding), styleType, styleHref).getBytes(xmlEncoding);
         }
         catch (final Exception e) {
             LOGGER.warning("La codificacion '" + xmlEncoding + "' no es valida, se usara la por defecto del sistema: " + e); //$NON-NLS-1$ //$NON-NLS-2$
-            return Utils.addStyleSheetHeader(new String(baos.toByteArray()), styleType, styleHref).getBytes();
+            return Utils.addStyleSheetHeader(baos.toString(), styleType, styleHref).getBytes();
         }
     }
 
@@ -580,7 +531,7 @@ public final class Utils {
         	certChain.add(Utils.getCertificate(signatureNodes.item(i)));
         }
 
-        final AOSimpleSignInfo ssi = new AOSimpleSignInfo(certChain.toArray(new X509Certificate[certChain.size()]), signingTime);
+        final AOSimpleSignInfo ssi = new AOSimpleSignInfo(certChain.toArray(new X509Certificate[0]), signingTime);
         ssi.setSignAlgorithm(((Element) signature.getElementsByTagNameNS(XMLConstants.DSIGNNS, "SignatureMethod").item(0)).getAttribute("Algorithm")); //$NON-NLS-1$ //$NON-NLS-2$
 
         byte[] pkcs1;
@@ -641,7 +592,7 @@ public final class Utils {
         }
         final X509Certificate cert;
         try (
-    		final InputStream isCert = new ByteArrayInputStream(Base64.decode(b64Cert));
+    		final InputStream isCert = new ByteArrayInputStream(Base64.decode(b64Cert))
 		) {
             cert = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(isCert); //$NON-NLS-1$
             try {

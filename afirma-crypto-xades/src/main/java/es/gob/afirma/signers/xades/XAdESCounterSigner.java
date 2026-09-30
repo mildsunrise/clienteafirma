@@ -33,6 +33,7 @@ import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.spec.TransformParameterSpec;
 import javax.xml.parsers.DocumentBuilder;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -152,7 +153,7 @@ public final class XAdESCounterSigner {
 
 		final DocumentBuilder docBuilder;
 		try {
-			docBuilder = Utils.getNewDocumentBuilder();
+			docBuilder = SecureXmlBuilder.getSecureDocumentBuilder();
 		}
 		catch (final Exception e) {
 			throw new AOException("No se ha podido obtener el constructor de firma XML", e, XMLErrorCode.Internal.INTERNAL_XML_SIGNING_ERROR); //$NON-NLS-1$
@@ -388,7 +389,7 @@ public final class XAdESCounterSigner {
 		// y se vuelve a dejar como raiz el nodo Signature original
 		if (esFirmaSimple) {
 			try {
-				final Document newdoc = Utils.getNewDocumentBuilder().newDocument();
+				final Document newdoc = SecureXmlBuilder.getSecureDocumentBuilder().newDocument();
 				newdoc.appendChild(
 						newdoc.adoptNode(
 								doc.getElementsByTagNameNS(

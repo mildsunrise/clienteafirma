@@ -39,6 +39,7 @@ import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.spec.XPathFilterParameterSpec;
 
+import es.gob.afirma.core.misc.SecureXmlBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -104,7 +105,7 @@ public final class XAdESCoSigner {
 
 		Document signDocument;
 		try {
-			signDocument = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(sign));
+			signDocument = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(sign));
 		}
 		catch (final Exception e) {
 			throw new AOInvalidSignatureFormatException("No se ha podido leer el documento XML de firmas", e); //$NON-NLS-1$

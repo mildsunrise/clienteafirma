@@ -229,7 +229,7 @@ public final class XAdESASiCSTriPhasePreProcessor extends XAdESTriPhasePreProces
 //
 //		Document signDocument;
 //    	try {
-//    		signDocument = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(signature));
+//    		signDocument = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(signature));
 //    	}
 //    	catch (final Exception e) {
 //    		throw new AOException("No se ha podido cargar el documento XML de firmas", e); //$NON-NLS-1$
@@ -250,7 +250,7 @@ public final class XAdESASiCSTriPhasePreProcessor extends XAdESTriPhasePreProces
 //    	// Cargamos la cofirma
 //    	Document cosignDocument;
 //    	try {
-//    		cosignDocument = Utils.getNewDocumentBuilder().parse(new ByteArrayInputStream(signature));
+//    		cosignDocument = SecureXmlBuilder.getSecureDocumentBuilder().parse(new ByteArrayInputStream(signature));
 //    	}
 //    	catch (final Exception e) {
 //    		throw new AOException("No se ha podido cargar la firma generada para hacer de cofirma", e); //$NON-NLS-1$

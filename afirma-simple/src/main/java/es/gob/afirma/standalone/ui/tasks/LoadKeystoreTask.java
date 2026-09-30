@@ -1,7 +1,5 @@
 package es.gob.afirma.standalone.ui.tasks;
 
-import java.util.logging.Logger;
-
 import es.gob.afirma.core.misc.Platform;
 import es.gob.afirma.core.prefs.KeyStorePreferencesManager;
 import es.gob.afirma.keystores.AOKeyStore;
@@ -9,6 +7,8 @@ import es.gob.afirma.keystores.AOKeyStoreManager;
 import es.gob.afirma.keystores.AOKeyStoreManagerFactory;
 import es.gob.afirma.standalone.SimpleKeyStoreManager;
 import es.gob.afirma.standalone.configurator.common.PreferencesManager;
+
+import java.util.logging.Logger;
 
 /**
  * Hilo para la carga de un almac&eacute;n de claves por defecto en segundo plano. Se omite si el almac&eacute;n es de
@@ -65,7 +65,8 @@ public class LoadKeystoreTask extends Thread {
 					null, // Lib
 					null, // Description
 					null, // PasswordCallback
-					null // Parent
+					null, // Parent,
+					false
 					);
     	} catch (final Exception e) {
     		LOGGER.severe("Error al cargar almacen de claves en segundo plano: " + e); //$NON-NLS-1$
