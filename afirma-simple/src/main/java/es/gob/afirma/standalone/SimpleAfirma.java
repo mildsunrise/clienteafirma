@@ -1053,9 +1053,6 @@ public final class SimpleAfirma implements PropertyChangeListener, WindowListene
 				LOGGER.info("Iniciando entorno grafico"); //$NON-NLS-1$
 				saf.initGUI(null, null);
 
-				LOGGER.info("Comprobando si es una version de Java compatible"); //$NON-NLS-1$
-				checkJavaVersion(saf.getMainFrame());
-
 				// Comprobamos si el almacen de confianza con el certificado SSL esta instalado correctamente
     			final CheckTrustKeyStoreTask checkTrustStoreTask = new CheckTrustKeyStoreTask(saf.getMainFrame());
     			checkTrustStoreTask.execute();
